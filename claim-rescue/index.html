@@ -1,0 +1,813 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Claim Rescue</title>
+</head><body>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: chart-room console. Worklist rail on the left, claim workspace on the right; stacks to one column on phones. */
+:root {
+  --bg: #eef2f1; --surface: #ffffff; --sunk: #f6f8f8; --ink: #13201e; --muted: #5a6a67; --line: #d5dedc;
+  --accent: #0d6b66; --accent-ink: #ffffff; --accent-soft: #dcefec;
+  --ok: #1d7038; --ok-soft: #dff3e5; --warn: #9a5800; --warn-soft: #fcefd9;
+  --bad: #b3261e; --bad-soft: #fbe3e0; --info: #3d4c9c; --info-soft: #e5e8f8;
+  --hl: #f2b632; --hl-soft: #fff3d1; --mark-sel: #c9edd2; --mark-spare: #dbeaf7; --mark-bad: #f8cdc8;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e1514; --surface: #162120; --sunk: #111a19; --ink: #e3ecea; --muted: #93a5a1; --line: #2a3836;
+  --accent: #4db3aa; --accent-ink: #062320; --accent-soft: #163633;
+  --ok: #6fd08b; --ok-soft: #173723; --warn: #f0b45a; --warn-soft: #3a2a10;
+  --bad: #ff8a80; --bad-soft: #3d1a17; --info: #a5b2ff; --info-soft: #222a4d;
+  --hl: #f2b632; --hl-soft: #3d3116; --mark-sel: #1f4a2c; --mark-spare: #1d3448; --mark-bad: #4f201c;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0e1514; --surface: #162120; --sunk: #111a19; --ink: #e3ecea; --muted: #93a5a1; --line: #2a3836;
+  --accent: #4db3aa; --accent-ink: #062320; --accent-soft: #163633;
+  --ok: #6fd08b; --ok-soft: #173723; --warn: #f0b45a; --warn-soft: #3a2a10;
+  --bad: #ff8a80; --bad-soft: #3d1a17; --info: #a5b2ff; --info-soft: #222a4d;
+  --hl: #f2b632; --hl-soft: #3d3116; --mark-sel: #1f4a2c; --mark-spare: #1d3448; --mark-bad: #4f201c;
+  color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 14px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 16px 40px; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+code, .mono { font-family: var(--mono); font-size: .85em; }
+.num { font-variant-numeric: tabular-nums; }
+.wrap { max-width: 1480px; margin: 0 auto; display: grid; gap: 14px; }
+
+/* app bar */
+.appbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.brand { font-weight: 700; font-size: 1.35rem; letter-spacing: -.01em; }
+.brand small { display: block; font-weight: 400; font-size: .85rem; color: var(--muted); letter-spacing: 0; }
+.badge { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--surface);
+  border-radius: 999px; padding: 4px 10px; font-size: .8rem; color: var(--muted); }
+.badge i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block; }
+.notice { font-size: .82rem; color: var(--muted); background: var(--sunk); border: 1px dashed var(--line); border-radius: 8px; padding: 6px 10px; }
+
+/* totals */
+.totals { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)) minmax(220px, 1.4fr); gap: 10px; align-items: stretch; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+.tile .l { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+.tile .v { font-size: 1.45rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.runall { display: grid; gap: 6px; align-content: center; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 8px 12px; font-weight: 500; }
+.btn:hover:not(:disabled) { border-color: var(--accent); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn.block { width: 100%; }
+.bar { height: 8px; border-radius: 99px; background: var(--sunk); border: 1px solid var(--line); overflow: hidden; }
+.bar > div { height: 100%; background: var(--accent); transition: width .2s; }
+.small { font-size: .8rem; color: var(--muted); }
+
+/* layout */
+.main { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 16px; align-items: start; }
+.rail { display: grid; gap: 8px; }
+.rail h2 { font-size: .74rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.field label { display: block; font-size: .75rem; color: var(--muted); margin-bottom: 2px; }
+.field input { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; background: var(--surface); }
+.card { text-align: left; width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; display: grid; gap: 3px; }
+.card:hover { border-color: var(--accent); }
+.card.sel { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+.card .top { display: flex; justify-content: space-between; gap: 6px; align-items: center; }
+.card .id { font-family: var(--mono); font-size: .8rem; font-weight: 500; }
+.card .svc { font-size: .84rem; color: var(--muted); }
+.card .bot { display: flex; justify-content: space-between; font-size: .8rem; font-variant-numeric: tabular-nums; }
+.due-soon { color: var(--bad); font-weight: 600; }
+.chip { font-size: .7rem; font-weight: 600; border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
+.c-New { background: var(--sunk); color: var(--muted); border: 1px solid var(--line); }
+.c-Ready { background: var(--ok-soft); color: var(--ok); }
+.c-Needs { background: var(--warn-soft); color: var(--warn); }
+.c-No { background: var(--sunk); color: var(--ink); border: 1px solid var(--line); }
+.c-Out { background: var(--info-soft); color: var(--info); }
+.c-Sent { background: var(--ok); color: var(--surface); }
+.c-Rejected { background: var(--bad-soft); color: var(--bad); }
+
+.claim { display: grid; gap: 12px; min-width: 0; }
+.head { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; justify-content: space-between; }
+.head .cid { font-family: var(--mono); font-weight: 500; font-size: 1.05rem; margin-right: 8px; }
+.facts { overflow-wrap: anywhere; display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 6px; font-size: .85rem; }
+.facts b { display: block; font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+.live { font-size: .82rem; color: var(--muted); font-family: var(--mono); }
+
+.stepper { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.step { position: relative; background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--ok); border-radius: 10px; padding: 8px 10px; min-width: 0; }
+.step.warn { border-top-color: var(--warn); }
+.step.err { border-top-color: var(--bad); }
+.step.skip { border-top-color: var(--line); background: var(--sunk); color: var(--muted); }
+.step .n { font-size: .68rem; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+.step .t { font-weight: 600; }
+.step .s { font-size: .82rem; color: var(--muted); }
+.caught { position: absolute; top: 7px; right: 8px; font-size: .7rem; font-weight: 700; color: var(--bad); background: var(--bad-soft); border-radius: 99px; padding: 0 7px; }
+
+.banner { border-radius: 10px; padding: 9px 12px; display: flex; gap: 8px; align-items: flex-start; font-size: .9rem; }
+.banner.ok { background: var(--ok-soft); color: var(--ok); }
+.banner.warn { background: var(--warn-soft); color: var(--warn); }
+.banner.info { background: var(--info-soft); color: var(--info); }
+.banner.bad { background: var(--bad-soft); color: var(--bad); }
+.banner span { color: var(--ink); }
+
+.cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(0, 1.6fr); gap: 14px; align-items: start; }
+.col { display: grid; gap: 8px; min-width: 0; }
+.colhead { font-size: .72rem; letter-spacing: .09em; font-weight: 700; color: var(--muted); border-bottom: 2px solid var(--ink); padding-bottom: 4px; }
+.sechead { font-size: .7rem; letter-spacing: .07em; font-weight: 700; color: var(--muted); margin-top: 6px; text-transform: uppercase; }
+.sechead.red { color: var(--bad); }
+.reason { font-size: 1rem; font-weight: 500; }
+.codebox { overflow-wrap: anywhere; background: var(--sunk); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: .83rem; }
+.due { display: inline-block; border-radius: 6px; padding: 2px 8px; font-weight: 600; font-size: .85rem; background: var(--sunk); }
+.due.soon { background: var(--bad-soft); color: var(--bad); }
+.muted { color: var(--muted); font-size: .83rem; }
+
+.quote { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--ok); border-radius: 8px; padding: 8px 10px; font-size: .88rem; display: grid; gap: 4px; transition: background .12s, outline-color .12s; }
+.quote.spare { border-left-color: var(--info); }
+.quote.rejected { border-left-color: var(--bad); background: var(--bad-soft); }
+.quote.rejected .qtext { text-decoration: line-through; color: var(--muted); }
+.quote .meta { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.conf { font-size: .66rem; font-weight: 700; border-radius: 4px; padding: 0 5px; letter-spacing: .04em; }
+.conf-high { background: var(--ok-soft); color: var(--ok); }
+.conf-medium { background: var(--warn-soft); color: var(--warn); }
+.conf-low { background: var(--sunk); color: var(--muted); }
+.qnum { font-family: var(--mono); font-weight: 600; font-size: .78rem; color: var(--accent); }
+.qtext { font-style: italic; }
+.why { color: var(--muted); font-size: .82rem; }
+.rej { color: var(--bad); font-size: .8rem; font-weight: 500; }
+.src { font-size: .76rem; color: var(--muted); }
+
+.letter { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; font-size: .93rem; line-height: 1.65; }
+.letter.empty { color: var(--muted); background: var(--sunk); border-style: dashed; font-size: .88rem; }
+.letter .hdr { font-size: .8rem; color: var(--muted); border-bottom: 1px solid var(--line); padding-bottom: 6px; margin-bottom: 8px; }
+.cite { display: inline-block; min-width: 1.35em; text-align: center; font-family: var(--mono); font-size: .7rem; font-weight: 600; border-radius: 4px; background: var(--accent-soft); color: var(--accent); margin-left: 2px; padding: 0 3px; vertical-align: 1px; border: 0; cursor: pointer; }
+.flag-weak { background: var(--warn-soft); border-bottom: 2px solid var(--warn); }
+.flag-unsupported { background: var(--bad-soft); border-bottom: 2px solid var(--bad); }
+.drnote { margin-top: 10px; border-top: 1px dashed var(--line); padding-top: 8px; }
+.sig { margin-top: 10px; font-size: .78rem; color: var(--muted); }
+.note { border-radius: 8px; padding: 7px 10px; font-size: .84rem; }
+.note.amber { background: var(--warn-soft); }
+.note.red { background: var(--bad-soft); }
+.note b { color: var(--ink); }
+
+/* cite <-> quote linking: hover or click a citation */
+.claim:has(.cite-1:hover) .quote-1, .claim:has(.cite-1:hover) .cite-1, .claim:has(.quote-1:hover) .cite-1, .claim[data-pin="1"] .quote-1, .claim[data-pin="1"] .cite-1 { outline: 2px solid var(--hl); background: var(--hl-soft) !important; }
+.claim:has(.cite-2:hover) .quote-2, .claim:has(.cite-2:hover) .cite-2, .claim:has(.quote-2:hover) .cite-2, .claim[data-pin="2"] .quote-2, .claim[data-pin="2"] .cite-2 { outline: 2px solid var(--hl); background: var(--hl-soft) !important; }
+.claim:has(.cite-3:hover) .quote-3, .claim:has(.cite-3:hover) .cite-3, .claim:has(.quote-3:hover) .cite-3, .claim[data-pin="3"] .quote-3, .claim[data-pin="3"] .cite-3 { outline: 2px solid var(--hl); background: var(--hl-soft) !important; }
+.claim:has(.cite-4:hover) .quote-4, .claim:has(.cite-4:hover) .cite-4, .claim:has(.quote-4:hover) .cite-4, .claim[data-pin="4"] .quote-4, .claim[data-pin="4"] .cite-4 { outline: 2px solid var(--hl); background: var(--hl-soft) !important; }
+.claim:has(.cite-5:hover) .quote-5, .claim:has(.cite-5:hover) .cite-5, .claim:has(.quote-5:hover) .cite-5, .claim[data-pin="5"] .quote-5, .claim[data-pin="5"] .cite-5 { outline: 2px solid var(--hl); background: var(--hl-soft) !important; }
+.claim:has(.cite-6:hover) .quote-6, .claim:has(.cite-6:hover) .cite-6, .claim:has(.quote-6:hover) .cite-6, .claim[data-pin="6"] .quote-6, .claim[data-pin="6"] .cite-6 { outline: 2px solid var(--hl); background: var(--hl-soft) !important; }
+.claim:has(.cite-7:hover) .quote-7, .claim:has(.cite-7:hover) .cite-7, .claim:has(.quote-7:hover) .cite-7, .claim[data-pin="7"] .quote-7, .claim[data-pin="7"] .cite-7 { outline: 2px solid var(--hl); background: var(--hl-soft) !important; }
+.claim:has(.cite-8:hover) .quote-8, .claim:has(.cite-8:hover) .cite-8, .claim:has(.quote-8:hover) .cite-8, .claim[data-pin="8"] .quote-8, .claim[data-pin="8"] .cite-8 { outline: 2px solid var(--hl); background: var(--hl-soft) !important; }
+.claim:has(.cite-9:hover) .quote-9, .claim:has(.cite-9:hover) .cite-9, .claim:has(.quote-9:hover) .cite-9, .claim[data-pin="9"] .quote-9, .claim[data-pin="9"] .cite-9 { outline: 2px solid var(--hl); background: var(--hl-soft) !important; }
+
+.details { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+.details > summary { cursor: pointer; padding: 8px 12px; font-weight: 500; font-size: .88rem; }
+.details .inner { padding: 0 12px 12px; display: grid; gap: 8px; }
+.doc { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: .84rem; white-space: pre-wrap; background: var(--sunk); overflow-wrap: anywhere; }
+.doc .dh { white-space: normal; font-size: .76rem; color: var(--muted); margin-bottom: 4px; }
+.pid-bad { color: var(--bad); font-weight: 700; }
+mark { color: inherit; border-radius: 3px; padding: 0 1px; }
+mark.sel { background: var(--mark-sel); } mark.spare { background: var(--mark-spare); } mark.bad { background: var(--mark-bad); text-decoration: line-through; }
+
+.actions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.panel { background: var(--surface); border: 1px solid var(--accent); border-radius: 10px; padding: 12px 14px; display: grid; gap: 8px; }
+.panel h3 { margin: 0; font-size: .95rem; }
+.panel ul { margin: 0; padding-left: 18px; }
+.panel textarea, .panel select { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; background: var(--sunk); }
+.panel .row { display: flex; gap: 8px; flex-wrap: wrap; }
+.chk { display: flex; gap: 8px; align-items: flex-start; font-size: .88rem; }
+.result { border-radius: 10px; padding: 9px 12px; font-size: .9rem; }
+.result.sent { background: var(--ok-soft); } .result.rej { background: var(--bad-soft); }
+
+.tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--line); }
+.tab { border: 1px solid transparent; border-bottom: 0; background: none; padding: 6px 10px; border-radius: 8px 8px 0 0; font-size: .84rem; color: var(--muted); }
+.tab.on { border-color: var(--line); background: var(--sunk); color: var(--ink); font-weight: 600; }
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.kpis .tile .v { font-size: 1.1rem; }
+.ev { font-family: var(--mono); font-size: .78rem; padding: 2px 6px; border-radius: 4px; overflow-wrap: anywhere; }
+.ev-reject { color: var(--bad); background: var(--bad-soft); font-weight: 500; }
+.ev-pass { color: var(--ok); } .ev-warn { color: var(--warn); background: var(--warn-soft); } .ev-info { color: var(--info); }
+.io { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+pre.code { margin: 0; font-family: var(--mono); font-size: .75rem; background: var(--sunk); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 360px; overflow: auto; }
+.outbox pre.code { max-height: 260px; }
+.toast { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 8px; font-size: .88rem; z-index: 20; }
+
+@media (max-width: 1100px) {
+  .totals { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .runall { grid-column: 1 / -1; }
+  .cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .cols .col:last-child { grid-column: 1 / -1; }
+}
+@media (max-width: 820px) {
+  .main { grid-template-columns: minmax(0, 1fr); }
+  .rail .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+}
+@media (max-width: 640px) {
+  .totals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stepper, .actions, .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cols, .io { grid-template-columns: minmax(0, 1fr); }
+  .rail .cards { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap" id="app"></div>
+
+<script>
+const DATA = {"denials": [{"case": 1, "claim_id": "CLM-2026-0411", "patient_id": "P-1001", "patient_name": "Maria Alvarez (synthetic)", "service": "MRI lumbar spine without contrast (CPT 72148)", "visit_date": "2026-10-02", "insurer": "Northwind Health Plan", "insurer_code": "CARC 197", "insurer_text": "Precertification/authorization/notification/pre-treatment absent.", "reason_plain": "The insurer says there was no prior authorization on file for this MRI.", "deadline": "2026-11-27", "amount": 1840.0}, {"case": 2, "claim_id": "CLM-2026-0415", "patient_id": "P-1002", "patient_name": "James Okafor (synthetic)", "service": "Outpatient cardiology consultation (CPT 99244)", "visit_date": "2026-10-09", "insurer": "Northwind Health Plan", "insurer_code": "CARC 252", "insurer_text": "An attachment/other documentation is required to adjudicate this claim/service. RARC N54: Claim information is inconsistent with pre-certified/authorized services (referral).", "reason_plain": "The plan requires a referral from the primary care doctor for a specialist visit, and no referral was attached.", "deadline": "2026-12-09", "amount": 465.0}, {"case": 3, "claim_id": "CLM-2026-0419", "patient_id": "P-1003", "patient_name": "Aisha Rahman (synthetic)", "service": "In-lab CPAP titration sleep study (CPT 95811)", "visit_date": "2026-10-20", "insurer": "Bluepeak Insurance", "insurer_code": "CARC 50", "insurer_text": "These are non-covered services because this is not deemed a 'medical necessity' by the payer.", "reason_plain": "The insurer says the sleep study was not medically necessary.", "deadline": "2026-12-04", "amount": 2310.0}, {"case": 4, "claim_id": "CLM-2026-0423", "patient_id": "P-1004", "patient_name": "Daniel Kim (synthetic)", "service": "MRI right knee without contrast (CPT 73721)", "visit_date": "2026-10-14", "insurer": "Bluepeak Insurance", "insurer_code": "CARC 50", "insurer_text": "These are non-covered services because this is not deemed a 'medical necessity' by the payer.", "reason_plain": "The insurer says the knee MRI was not medically necessary.", "deadline": "2026-11-30", "amount": 1625.0}, {"case": 5, "claim_id": "CLM-2026-0427", "patient_id": "P-1005", "patient_name": "Grace Liu (synthetic)", "service": "Chemodenervation for chronic migraine, OnabotulinumtoxinA (CPT 64615)", "visit_date": "2026-10-07", "insurer": "Northwind Health Plan", "insurer_code": "CARC 197", "insurer_text": "Precertification/authorization/notification/pre-treatment absent.", "reason_plain": "The insurer says there was no prior authorization on file for the migraine injections.", "deadline": "2026-12-02", "amount": 1290.0}, {"case": 6, "claim_id": "CLM-2026-0431", "patient_id": "P-1006", "patient_name": "Robert Mensah (synthetic)", "service": "Office visit, established patient (CPT 99214)", "visit_date": "2026-10-16", "insurer": "Bluepeak Insurance", "insurer_code": "CARC 18", "insurer_text": "Exact duplicate claim/service.", "reason_plain": "The insurer says this visit was already billed on another claim (duplicate billing).", "deadline": "2026-12-15", "amount": 180.0}], "charts": {"P-1001": [{"doc_id": "P1001-PT-0820", "patient_id": "P-1001", "doc_type": "pt_note", "visit_date": "2026-08-20", "author": "L. Moreno, DPT", "text": "Physical therapy discharge summary. Patient completed 6 weeks of physical therapy (12 sessions) for low back pain. Minimal improvement. Pain still 7/10 with radiation down the left leg. Recommend follow-up with primary care for further workup."}, {"doc_id": "P1001-VN-0918", "patient_id": "P-1001", "doc_type": "visit_note", "visit_date": "2026-09-18", "author": "Dr. Sam Patel, MD", "text": "Chief complaint: low back pain radiating to the left leg for 10 weeks. Failed 6 weeks of physical therapy and NSAIDs. Exam: positive straight leg raise on the left at 40 degrees, decreased left ankle reflex. Assessment: lumbar radiculopathy, rule out disc herniation. Plan: MRI lumbar spine without contrast. Prior authorization request submitted to Northwind Health Plan today."}, {"doc_id": "P1001-PA-0924", "patient_id": "P-1001", "doc_type": "prior_auth", "visit_date": "2026-09-24", "author": "Northwind Health Plan Utilization Management", "text": "Prior authorization decision. Authorization number: NW-PA-778201. Status: APPROVED. Service: MRI lumbar spine without contrast, CPT 72148. Member ID: NW-55120934. Valid from 2026-09-24 through 2026-12-23. Ordering provider: Dr. Sam Patel."}, {"doc_id": "P1001-VN-1002", "patient_id": "P-1001", "doc_type": "visit_note", "visit_date": "2026-10-02", "author": "Radiology, Riverside Imaging", "text": "MRI lumbar spine without contrast performed. Indication: left L5 radiculopathy. Authorization NW-PA-778201 verified at check-in. Findings: left paracentral disc protrusion at L4-L5 contacting the traversing left L5 nerve root."}], "P-1002": [{"doc_id": "P1002-VN-0926", "patient_id": "P-1002", "doc_type": "visit_note", "visit_date": "2026-09-26", "author": "Dr. Nadia Brooks, MD (Primary care)", "text": "Patient reports chest tightness when climbing stairs for the past month, resolves with rest. ECG today: nonspecific ST changes. Family history of early coronary disease. Plan: send to cardiology for evaluation, stress test per cardiology."}, {"doc_id": "P1002-MSG-0926", "patient_id": "P-1002", "doc_type": "referral", "visit_date": "2026-09-26", "author": "Dr. Nadia Brooks, MD (Primary care)", "text": "Internal message to Dr. Omar Haddad, Cardiology: Please see Mr. Okafor for evaluation of exertional chest tightness with abnormal ECG. I am requesting a consult within 2 weeks. Thank you. - N. Brooks, PCP"}, {"doc_id": "P1002-VN-1009", "patient_id": "P-1002", "doc_type": "visit_note", "visit_date": "2026-10-09", "author": "Dr. Omar Haddad, MD (Cardiology)", "text": "Cardiology consultation requested by Dr. Brooks (PCP) for exertional chest tightness. Exam unremarkable. Plan: exercise stress echocardiogram, start aspirin 81 mg."}], "P-1003": [{"doc_id": "P1003-LAB-0915", "patient_id": "P-1003", "doc_type": "lab_result", "visit_date": "2026-09-15", "author": "Sleep Diagnostics Lab", "text": "Home sleep apnea test. Apnea-hypopnea index (AHI): 34 events per hour. Lowest oxygen saturation: 81%. Interpretation: severe obstructive sleep apnea."}, {"doc_id": "P1003-VN-0929", "patient_id": "P-1003", "doc_type": "visit_note", "visit_date": "2026-09-29", "author": "Dr. Elena Ruiz, MD (Sleep medicine)", "text": "Follow-up for sleep study results. Epworth Sleepiness Scale 15. Patient fell asleep while driving once last month. Comorbid hypertension on two medications. Home study shows severe OSA with AHI 34. Auto-CPAP trial failed due to persistent residual events and mask leak. Plan: in-lab CPAP titration study to determine effective pressure."}, {"doc_id": "P1003-VN-1020", "patient_id": "P-1003", "doc_type": "visit_note", "visit_date": "2026-10-20", "author": "Sleep Diagnostics Lab", "text": "In-lab CPAP titration performed overnight. Optimal pressure 11 cm H2O eliminated obstructive events. Residual AHI 3 at optimal pressure."}], "P-1004": [{"doc_id": "P1004-VN-250302", "patient_id": "P-1004", "doc_type": "visit_note", "visit_date": "2025-03-02", "author": "Dr. Hiro Tanaka, MD", "text": "Right knee pain after a fall while skiing. Swelling and painful locking of the knee. Positive McMurray test. Plan: rest, ice, refer to physical therapy; consider MRI if no improvement."}, {"doc_id": "P1040-VN-1014", "patient_id": "P-1040", "doc_type": "visit_note", "visit_date": "2026-10-14", "author": "Dr. Hiro Tanaka, MD", "text": "Patient: Daniel Kimura. Right knee mechanical locking and giving way for 8 weeks. Positive McMurray test, joint line tenderness. Failed 6 weeks of physical therapy and NSAIDs. Suspected medial meniscus tear. Plan: MRI right knee without contrast."}, {"doc_id": "P1004-VN-1014", "patient_id": "P-1004", "doc_type": "visit_note", "visit_date": "2026-10-14", "author": "Dr. Hiro Tanaka, MD", "text": "Annual wellness visit. Patient mentions mild morning stiffness in the right knee. No locking, no instability, no swelling. Knee exam normal with full range of motion. Blood pressure and labs reviewed."}], "P-1005": [{"doc_id": "P1005-VN-0812", "patient_id": "P-1005", "doc_type": "visit_note", "visit_date": "2026-08-12", "author": "Dr. Priya Shah, MD (Neurology)", "text": "Chronic migraine, 18 headache days per month. Tried topiramate and propranolol without adequate relief. Discussed onabotulinumtoxinA injections."}, {"doc_id": "P1005-VN-0930", "patient_id": "P-1005", "doc_type": "visit_note", "visit_date": "2026-09-30", "author": "Dr. Priya Shah, MD (Neurology)", "text": "Patient agrees to onabotulinumtoxinA for chronic migraine. Plan: staff to submit prior authorization to Northwind Health Plan. Schedule injection for 2026-10-07."}, {"doc_id": "P1005-VN-1007", "patient_id": "P-1005", "doc_type": "visit_note", "visit_date": "2026-10-07", "author": "Dr. Priya Shah, MD (Neurology)", "text": "OnabotulinumtoxinA 155 units administered across 31 sites per protocol. Tolerated well. Return in 12 weeks."}], "P-1006": [{"doc_id": "P1006-VN-1016", "patient_id": "P-1006", "doc_type": "visit_note", "visit_date": "2026-10-16", "author": "Dr. Sam Patel, MD", "text": "Follow-up for type 2 diabetes and hypertension. A1c 7.4. Adjusted metformin. Return in 3 months."}, {"doc_id": "P1006-BILL-1016", "patient_id": "P-1006", "doc_type": "billing_record", "visit_date": "2026-10-16", "author": "Billing office", "text": "Claim CLM-2026-0402 submitted 2026-10-18 for CPT 99214, date of service 2026-10-16. Claim CLM-2026-0431 resubmitted 2026-10-25 for the same service."}]}, "mock": {"1": {"classify": {"category": "missing_authorization", "rationale": "CARC 197 means the payer found no precertification on file."}, "find_proof": {"candidates": [{"doc_id": "P1001-PA-0924", "quote": "Authorization number: NW-PA-778201. Status: APPROVED.", "why_it_helps": "Shows the insurer itself approved prior authorization for this service.", "confidence": "high"}, {"doc_id": "P1001-PA-0924", "quote": "Northwind approved the lumbar MRI before the scan was performed.", "why_it_helps": "Shows approval came before the date of service.", "confidence": "high"}, {"doc_id": "P1001-PA-0924", "quote": "Valid from 2026-09-24 through 2026-12-23.", "why_it_helps": "The authorization window covers the 2026-10-02 date of service.", "confidence": "high"}, {"doc_id": "P1001-VN-1002", "quote": "Authorization NW-PA-778201 verified at check-in.", "why_it_helps": "The imaging center confirmed the authorization on the day of the scan.", "confidence": "high"}, {"doc_id": "P1001-VN-0918", "quote": "Failed 6 weeks of physical therapy and NSAIDs.", "why_it_helps": "Supports that the MRI was clinically appropriate.", "confidence": "medium"}], "no_evidence_reason": ""}, "draft": [{"text": "We request reconsideration of the denial of claim CLM-2026-0411 for an MRI of the lumbar spine (CPT 72148) performed on 2026-10-02.", "cites": [], "kind": "framing"}, {"text": "Northwind Health Plan approved prior authorization NW-PA-778201 for this service.", "cites": [1], "kind": "fact"}, {"text": "The authorization was valid from 2026-09-24 through 2026-12-23, which includes the date of service.", "cites": [2], "kind": "fact"}, {"text": "The imaging center verified authorization NW-PA-778201 at patient check-in.", "cites": [3], "kind": "fact"}, {"text": "The patient had no prior lumbar imaging in the past five years.", "cites": [], "kind": "fact"}, {"text": "Because a valid authorization was on file, we ask that the claim be reprocessed and paid.", "cites": [], "kind": "framing"}]}, "2": {"classify": {"category": "missing_documents", "rationale": "CARC 252 with a referral remark means a required referral document was missing."}, "find_proof": {"candidates": [{"doc_id": "P1002-MSG-0926", "quote": "Please see Mr. Okafor for evaluation of exertional chest tightness with abnormal ECG. I am requesting a consult within 2 weeks.", "why_it_helps": "The PCP asked cardiology to see the patient, which functions as a referral, though not on a referral form.", "confidence": "medium"}, {"doc_id": "P1002-VN-0926", "quote": "Plan: send to cardiology for evaluation, stress test per cardiology.", "why_it_helps": "The PCP's plan documents the decision to refer.", "confidence": "medium"}, {"doc_id": "P1002-VN-1009", "quote": "Cardiology consultation requested by Dr. Brooks (PCP) for exertional chest tightness.", "why_it_helps": "The specialist note confirms the visit was requested by the PCP.", "confidence": "medium"}], "no_evidence_reason": ""}, "draft": [{"text": "We request reconsideration of claim CLM-2026-0415 for a cardiology consultation (CPT 99244) on 2026-10-09.", "cites": [], "kind": "framing"}, {"text": "The patient's primary care physician asked cardiology to evaluate exertional chest tightness with an abnormal ECG and requested the consult within two weeks.", "cites": [1], "kind": "fact"}, {"text": "This request was the PCP's formal referral of the patient to cardiology.", "cites": [1, 2], "kind": "fact"}, {"text": "The cardiology note confirms the consultation was requested by the PCP, Dr. Brooks.", "cites": [3], "kind": "fact"}, {"text": "We have attached the referral documentation and ask that the claim be reprocessed.", "cites": [], "kind": "framing"}]}, "3": {"classify": {"category": "medical_necessity", "rationale": "CARC 50 is a medical-necessity denial."}, "find_proof": {"candidates": [{"doc_id": "P1003-LAB-0915", "quote": "Apnea-hypopnea index (AHI): 34 events per hour. Lowest oxygen saturation: 81%.", "why_it_helps": "AHI over 30 is severe sleep apnea, a standard coverage criterion.", "confidence": "high"}, {"doc_id": "P1003-VN-0929", "quote": "Auto-CPAP trial failed due to persistent residual events and mask leak.", "why_it_helps": "Shows the cheaper alternative was tried first and failed.", "confidence": "high"}, {"doc_id": "P1003-VN-0929", "quote": "Epworth Sleepiness Scale 15. Patient fell asleep while driving once last month.", "why_it_helps": "Documents dangerous daytime sleepiness.", "confidence": "high"}, {"doc_id": "P1003-VN-0929", "quote": "Comorbid hypertension on two medications.", "why_it_helps": "Comorbidity strengthens the case for treatment.", "confidence": "medium"}], "no_evidence_reason": ""}, "draft": [{"text": "We request reconsideration of claim CLM-2026-0419 for an in-lab CPAP titration study (CPT 95811) on 2026-10-20.", "cites": [], "kind": "framing"}, {"text": "A home sleep apnea test showed an apnea-hypopnea index of 34 events per hour with oxygen saturation as low as 81%.", "cites": [1], "kind": "fact"}, {"text": "An auto-CPAP trial was attempted first and failed because of persistent residual events and mask leak.", "cites": [2], "kind": "fact"}, {"text": "The patient has an Epworth Sleepiness Scale score of 15 and fell asleep while driving in the prior month.", "cites": [3], "kind": "fact"}, {"text": "An attended titration study was therefore medically necessary to establish an effective pressure, and we ask that the claim be paid.", "cites": [], "kind": "framing"}]}, "4": {"classify": {"category": "medical_necessity", "rationale": "CARC 50 is a medical-necessity denial."}, "find_proof": {"candidates": [{"doc_id": "P1040-VN-1014", "quote": "Right knee mechanical locking and giving way for 8 weeks. Positive McMurray test, joint line tenderness.", "why_it_helps": "Mechanical symptoms and a positive McMurray test are standard MRI criteria.", "confidence": "high"}, {"doc_id": "P1040-VN-1014", "quote": "Failed 6 weeks of physical therapy and NSAIDs.", "why_it_helps": "Conservative treatment was tried first.", "confidence": "high"}, {"doc_id": "P1004-VN-250302", "quote": "Swelling and painful locking of the knee. Positive McMurray test.", "why_it_helps": "Documents locking and a positive meniscal test in the right knee.", "confidence": "medium"}], "no_evidence_reason": ""}, "draft": null}, "5": {"classify": {"category": "missing_authorization", "rationale": "CARC 197 means the payer found no precertification on file."}, "find_proof": {"candidates": [], "no_evidence_reason": "No evidence found. The 2026-09-30 note says staff would submit a prior authorization, but the chart has no authorization number, approval letter, or insurer decision. A plan to request authorization is not proof that it was granted."}, "draft": null}, "6": {"classify": {"category": "out_of_scope", "rationale": "CARC 18 is a duplicate-claim denial, which is a billing issue, not missing evidence."}, "find_proof": {"candidates": [], "no_evidence_reason": "No evidence found in the chart."}, "draft": null}}, "prompts": {"CLASSIFY_SYSTEM": "You triage health-insurance claim denials for a hospital billing team.\nDecide whether a denial is one of three types this tool is allowed to work on:\n- missing_authorization: the insurer says prior authorization / precertification was absent.\n- medical_necessity: the insurer says the service was not medically necessary.\n- missing_documents: the insurer says a required document (referral, records, attachment) is missing.\nAnything else (duplicate billing, coding errors, eligibility, timely filing, coordination of benefits, ...)\nis out_of_scope and goes to the normal billing queue.\nRespond with JSON only.", "CLASSIFY_USER": "Denial:\n- Claim: {claim_id}\n- Service: {service}\n- Insurer code: {insurer_code} - \"{insurer_text}\"\n- Plain-language reason: {reason_plain}\n\nReturn exactly this JSON:\n{{\"category\": \"missing_authorization\" | \"medical_necessity\" | \"missing_documents\" | \"out_of_scope\",\n  \"rationale\": \"<one sentence>\"}}", "DRAFT_SYSTEM": "You draft short insurance appeal letters for a physician to review and sign.\nRules:\n- Use ONLY the numbered quotes provided. Do not add any medical fact, date, number or name\n  that is not in a quote.\n- Every factual sentence must cite at least one quote, like [1] or [1][2]. Cite the number in the\n  \"cites\" field; do not write the brackets in the text.\n- Opening and closing sentences that contain no facts (e.g. \"We request reconsideration\") are\n  kind \"framing\" and need no citation.\n- 4 to 7 sentences total, plain professional English, no headings, no signature block.\nRespond with JSON only.", "DRAFT_USER": "Write an appeal for this denial.\n- Claim {claim_id}, patient {patient_name} ({patient_id}), date of service {visit_date}\n- Service: {service}\n- Denial: {insurer_code} - {reason_plain}\n\nQuotes you may cite:\n{quotes}\n\nReturn exactly this JSON:\n{{\"sentences\": [{{\"text\": \"...\", \"cites\": [1], \"kind\": \"fact\" | \"framing\"}}]}}", "FIND_PROOF_SYSTEM": "You help a doctor appeal an insurance denial by finding evidence in the patient's chart.\nRules:\n- Only quote text that appears WORD FOR WORD in a document. Copy it exactly; do not paraphrase,\n  fix typos, or join sentences from different places. A program will check every quote.\n- Each quote should be one or two sentences, the shortest span that proves the point.\n- Prefer documents about THIS patient, dated close to the date of service.\n- If the chart does not contain evidence that answers the denial, return an empty list and explain\n  what is missing. Do not stretch weak evidence to fill the gap.\n- confidence: \"high\" = directly answers the denial reason; \"medium\" = supports it but indirectly\n  or with different wording; \"low\" = tangential.\nRespond with JSON only.", "FIND_PROOF_USER": "Denial (category: {category}):\n- Claim {claim_id} for patient {patient_id}, date of service {visit_date}\n- Service: {service}\n- Insurer says: {insurer_code} - \"{insurer_text}\"\n- Plain-language reason: {reason_plain}\n\nPatient chart ({n_docs} documents):\n{chart}\n\nReturn exactly this JSON:\n{{\"candidates\": [{{\"doc_id\": \"...\", \"quote\": \"<verbatim text>\", \"why_it_helps\": \"<one sentence>\",\n                  \"confidence\": \"high\" | \"medium\" | \"low\"}}],\n  \"no_evidence_reason\": \"<empty string if candidates were found, else what is missing>\"}}", "SELF_CHECK_SYSTEM": "You are a strict reviewer checking an appeal letter before a doctor sees it.\nFor each sentence, check that every claim in it is fully supported by the quotes it cites.\nFlag a sentence if:\n- \"unsupported\": it states something not in its cited quotes (an invented fact, number, date, or\n  a stronger claim than the quote makes), or\n- \"weak\": the cited quote only indirectly supports it.\nDo not flag framing sentences that contain no facts. Do not rewrite the letter.\nRespond with JSON only.", "SELF_CHECK_USER": "Quotes:\n{quotes}\n\nDraft sentences (index: [cites] text):\n{sentences}\n\nReturn exactly this JSON:\n{{\"flags\": [{{\"sentence\": <index>, \"severity\": \"weak\" | \"unsupported\", \"issue\": \"<short reason>\"}}],\n  \"overall\": \"ok\" | \"needs_review\"}}"}, "dateWindows": {"prior_auth": [180, 0], "referral": [365, 0], "visit_note": [90, 7], "pt_note": [180, 7], "lab_result": [90, 7], "default": [90, 7]}, "inScope": ["missing_authorization", "medical_necessity", "missing_documents"], "maxQuotes": 3, "approver": "Dr. Sam Patel (demo)", "today": "2026-11-24"};
+const DOC_TYPE = {prior_auth: "Prior authorization", visit_note: "Visit note", referral: "Referral",
+  pt_note: "Physical therapy note", lab_result: "Lab / test result", billing_record: "Billing record"};
+const CATEGORY_LABEL = {missing_authorization: "Missing authorization", medical_necessity: "Medical necessity",
+  missing_documents: "Missing documents", out_of_scope: "Out of scope"};
+const CONF_RANK = {high: 0, medium: 1, low: 2};
+const PRICE = {in: 0.10, out: 0.50};  // USD per 1M tokens, priced like claude-haiku-5-5
+const LATENCY_MS = 350;
+
+const denials = [...DATA.denials].sort((a, b) => a.deadline.localeCompare(b.deadline));
+const byId = Object.fromEntries(denials.map(d => [d.claim_id, d]));
+const S = {results: {}, selected: denials[0].claim_id, approver: DATA.approver, panel: null, traceTab: 0,
+  trace: false, ctx: false, running: null, outbox: [], pin: null, busy: null, toast: null};
+
+// ------------------------------------------------------------------ utils
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+const fmt = (tpl, o) => tpl.replace(/\{\{|\}\}|\{(\w+)\}/g, (m, k) => m === "{{" ? "{" : m === "}}" ? "}" : (k in o ? String(o[k]) : m));
+const dayNum = s => Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10)) / 864e5;
+const money = (x, d = 0) => "$" + x.toLocaleString("en-US", {minimumFractionDigits: d, maximumFractionDigits: d});
+const short = (s, n = 70) => { s = (s || "").replace(/\n/g, " "); return s.length <= n ? s : s.slice(0, n - 1) + "…"; };
+const estTokens = s => Math.max(1, Math.floor([...s].length / 4));
+const ev = (level, guard, msg) => ({level, guard, msg});
+const daysLeft = c => dayNum(c.deadline) - dayNum(DATA.today);
+const dueText = c => { const n = daysLeft(c); return n < 0 ? "Overdue" : n === 0 ? "Due today" : `Due in ${n} day${n !== 1 ? "s" : ""}`; };
+const shortService = c => c.service.split(" (")[0];
+
+// ------------------------------------------------------------------ guards (port of guards.py)
+function normalize(s) {
+  s = (s || "").normalize("NFKC").replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[–—]/g, "-");
+  return s.replace(/\s+/g, " ").trim().toLowerCase();
+}
+function quoteCheck(cand, docsById) {
+  const doc = docsById[cand.doc_id];
+  if (!doc) return [false, `doc_id '${cand.doc_id}' is not in this patient's chart`];
+  const q = normalize(cand.quote);
+  if (q.length < 12) return [false, "quote is empty or too short to be meaningful"];
+  if (!normalize(doc.text).includes(q)) return [false, "quote does not appear word-for-word in the cited document"];
+  return [true, "verbatim match"];
+}
+function identityCheck(doc, claim) {
+  if (doc.patient_id !== claim.patient_id)
+    return [false, `document belongs to patient ${doc.patient_id}, claim is for ${claim.patient_id} (possible misfiled record)`];
+  const [before, after] = DATA.dateWindows[doc.doc_type] || DATA.dateWindows.default;
+  const delta = dayNum(doc.visit_date) - dayNum(claim.visit_date);
+  if (delta < -before || delta > after) {
+    const rel = delta < 0 ? `${-delta} days before` : `${delta} days after`;
+    return [false, `${doc.doc_type} dated ${doc.visit_date} is ${rel} the date of service; allowed window is ${before} days before to ${after} days after`];
+  }
+  return [true, `patient ${doc.patient_id} matches, date ${doc.visit_date} within window`];
+}
+function validateCandidates(cands, docs, claim) {
+  const byDoc = Object.fromEntries(docs.map(d => [d.doc_id, d]));
+  const events = [], out = [];
+  cands.forEach((c0, i) => {
+    const c = {...c0, id: `q${i + 1}`, confidence: (c0.confidence || "low").toLowerCase()};
+    const [ok, why] = quoteCheck(c, byDoc);
+    if (!ok) {
+      Object.assign(c, {accepted: false, rejected_by: "Quote check", reject_reason: why});
+      events.push(ev("reject", "Quote check", `QUOTE REJECTED [${c.doc_id}] "${short(c.quote)}": ${why}`));
+      out.push(c); return;
+    }
+    const doc = byDoc[c.doc_id];
+    Object.assign(c, {doc_type: doc.doc_type, doc_date: doc.visit_date, doc_author: doc.author || ""});
+    const [ok2, why2] = identityCheck(doc, claim);
+    if (!ok2) {
+      Object.assign(c, {accepted: false, rejected_by: "Identity check", reject_reason: why2});
+      events.push(ev("reject", "Identity check", `QUOTE REJECTED [${c.doc_id}]: ${why2}`));
+    } else {
+      Object.assign(c, {accepted: true, rejected_by: null, reject_reason: null});
+      events.push(ev("pass", "Quote + identity check", `[${c.doc_id}] ${why}; ${why2}`));
+    }
+    out.push(c);
+  });
+  return [out, events];
+}
+function checkDraft(sentences, nQuotes) {
+  const kept = [], dropped = [], events = [];
+  for (const s of sentences) {
+    let text = (s.text || "").trim();
+    const inline = [...text.matchAll(/\[(\d+)\]/g)].map(m => +m[1]);
+    const cites = [...new Set([...(s.cites || []).filter(x => /^\d+$/.test(String(x))).map(Number), ...inline])].sort((a, b) => a - b);
+    text = text.replace(/\s*\[\d+\]/g, "").trim();
+    const kind = s.kind || "fact";
+    if (!text) continue;
+    const bad = cites.filter(c => c < 1 || c > nQuotes);
+    if (bad.length) {
+      dropped.push({text, reason: `cites [${bad.join(", ")}], which is not a verified quote`});
+      events.push(ev("reject", "Draft check", `SENTENCE DROPPED (cites unverified quote [${bad.join(", ")}]): "${short(text)}"`));
+      continue;
+    }
+    if (kind !== "framing" && !cites.length) {
+      dropped.push({text, reason: "states a fact without citing any quote"});
+      events.push(ev("reject", "Draft check", `SENTENCE DROPPED (factual, no citation): "${short(text)}"`));
+      continue;
+    }
+    kept.push({text, cites, kind: cites.length ? kind : "framing"});
+  }
+  if (!dropped.length) events.push(ev("pass", "Draft check", `all ${kept.length} sentences cite verified quotes or are framing`));
+  return [kept, dropped, events];
+}
+function attachmentsFor(sentences, selected, docs) {
+  const nums = [...new Set(sentences.flatMap(s => s.cites))].sort((a, b) => a - b);
+  const ids = [];
+  for (const n of nums) { const d = selected[n - 1].doc_id; if (!ids.includes(d)) ids.push(d); }
+  return ids.map(id => docs.find(d => d.doc_id === id));
+}
+
+// ------------------------------------------------------------------ mock model (port of mock_responses.py)
+const mock = {
+  classify: c => DATA.mock[c].classify,
+  findProof: c => DATA.mock[c].find_proof || {candidates: [], no_evidence_reason: "No evidence found in the chart."},
+  draft(c, claim, quotes, defaultSel) {
+    if (defaultSel && DATA.mock[c].draft) return {sentences: DATA.mock[c].draft};
+    const names = {prior_auth: "prior authorization record", visit_note: "visit note", referral: "referral",
+      pt_note: "physical therapy note", lab_result: "test result"};
+    const s = [{text: `We request reconsideration of claim ${claim.claim_id} for ${claim.service} on ${claim.visit_date}.`, cites: [], kind: "framing"}];
+    quotes.forEach((q, i) => s.push({text: `The ${names[q.doc_type] || "medical record"} dated ${q.doc_date} states: “${q.quote}”`, cites: [i + 1], kind: "fact"}));
+    s.push({text: "Based on this documentation, we ask that the claim be reprocessed and paid.", cites: [], kind: "framing"});
+    return {sentences: s};
+  },
+  selfCheck(c, sentences, quotes) {
+    const flags = [];
+    sentences.forEach((s, i) => {
+      if (!s.cites.length) return;
+      const confs = s.cites.map(n => quotes[n - 1].confidence);
+      if (c === 2 && s.text.includes("formal referral"))
+        flags.push({sentence: i, severity: "unsupported", issue: "Quotes show an internal consult message and a plan note, not a formal referral form. 'Formal referral' overstates them."});
+      else if (!confs.includes("high"))
+        flags.push({sentence: i, severity: "weak", issue: `Cited evidence is indirect (confidence ${confs.map(x => x.toUpperCase()).join("/")}).`});
+    });
+    return {flags, overall: flags.length ? "needs_review" : "ok"};
+  },
+};
+
+async function llmCall(system, user, mockFn) {
+  const t0 = performance.now();
+  await sleep(LATENCY_MS);
+  const text = JSON.stringify(mockFn(), null, 2);
+  const tin = estTokens(system + user), tout = estTokens(text);
+  return {text, tin, tout, cost: (tin * PRICE.in + tout * PRICE.out) / 1e6, lat: (performance.now() - t0) / 1000, model: "mock", error: null};
+}
+const parseJson = t => { try { return JSON.parse(t); } catch (e) { return null; } };
+function step(name, system, user, res, parsed, events) {
+  if (parsed == null) events = [ev("reject", "JSON parse", "model output was not valid JSON"), ...events];
+  return {name, system, user, raw: res.text, parsed, guard_events: events, input_tokens: res.tin, output_tokens: res.tout,
+    cost_usd: res.cost, latency_s: res.lat, model: res.model, error: res.error};
+}
+
+// ------------------------------------------------------------------ agent (port of agent.py)
+const P = DATA.prompts;
+const chartForPrompt = docs => docs.map(d => `[${d.doc_id}] type=${d.doc_type} date=${d.visit_date} author=${d.author || ""}\n${d.text}`).join("\n\n");
+const quotesForPrompt = qs => qs.map((q, i) => `[${i + 1}] (${q.doc_type}, ${q.doc_date}) "${q.quote}"`).join("\n");
+const selected = r => r.selected_ids.map(id => r.candidates.find(c => c.id === id));
+
+async function classify(claim) {
+  const user = fmt(P.CLASSIFY_USER, claim);
+  const res = await llmCall(P.CLASSIFY_SYSTEM, user, () => mock.classify(claim.case));
+  const parsed = parseJson(res.text);
+  let cat = (parsed || {}).category || "";
+  const events = [];
+  if (!DATA.inScope.concat(["out_of_scope"]).includes(cat)) {
+    events.push(ev("warn", "Scope check", `unknown category '${cat}'; routing to normal queue`)); cat = "out_of_scope";
+  } else if (cat === "out_of_scope") events.push(ev("info", "Scope check", "out of scope: route to normal billing queue, no appeal drafted"));
+  else events.push(ev("pass", "Scope check", `in scope: ${CATEGORY_LABEL[cat]}`));
+  return [step("1. Classify", P.CLASSIFY_SYSTEM, user, res, parsed, events), cat, (parsed || {}).rationale || ""];
+}
+async function findProof(claim, docs, category) {
+  const user = fmt(P.FIND_PROOF_USER, {...claim, category, n_docs: docs.length, chart: chartForPrompt(docs)});
+  const res = await llmCall(P.FIND_PROOF_SYSTEM, user, () => mock.findProof(claim.case));
+  const parsed = parseJson(res.text) || {};
+  const [cands, events] = validateCandidates((parsed.candidates || []).filter(c => c && typeof c === "object"), docs, claim);
+  return [step("2. Find proof", P.FIND_PROOF_SYSTEM, user, res, parsed, events), cands, parsed.no_evidence_reason || ""];
+}
+async function draft(claim, quotes, defaultSel) {
+  const user = fmt(P.DRAFT_USER, {...claim, quotes: quotesForPrompt(quotes)});
+  const res = await llmCall(P.DRAFT_SYSTEM, user, () => mock.draft(claim.case, claim, quotes, defaultSel));
+  const parsed = parseJson(res.text) || {};
+  const [kept, dropped, events] = checkDraft((parsed.sentences || []).filter(s => s && typeof s === "object"), quotes.length);
+  return [step("3. Draft appeal", P.DRAFT_SYSTEM, user, res, parsed, events), kept, dropped];
+}
+async function selfCheck(claim, quotes, sentences) {
+  const sentTxt = sentences.map((s, i) => `${i}: [${s.cites.join(", ")}] ${s.text}`).join("\n");
+  const user = fmt(P.SELF_CHECK_USER, {quotes: quotesForPrompt(quotes), sentences: sentTxt});
+  const res = await llmCall(P.SELF_CHECK_SYSTEM, user, () => mock.selfCheck(claim.case, sentences, quotes));
+  const parsed = parseJson(res.text) || {};
+  const flags = [];
+  for (const f of parsed.flags || []) {
+    const idx = parseInt(f.sentence, 10);
+    if (Number.isInteger(idx) && idx >= 0 && idx < sentences.length && sentences[idx].kind !== "framing")
+      flags.push({sentence: idx, severity: f.severity || "weak", issue: f.issue || ""});
+  }
+  const events = flags.length ? flags.map(f => ev("warn", "Self-check", `sentence ${f.sentence + 1} flagged ${f.severity.toUpperCase()}: ${f.issue}`))
+    : [ev("pass", "Self-check", "no weak or unsupported sentences flagged")];
+  return [step("4. Self-check", P.SELF_CHECK_SYSTEM, user, res, parsed, events), flags];
+}
+function decideStatus(r) {
+  const err = r.steps.find(s => s.error);
+  if (err) { r.status = "Needs review"; r.banner = "An LLM call failed, so the agent stopped. " + err.error.slice(0, 160); return; }
+  if (r.category === "out_of_scope") { r.status = "Out of scope"; r.banner = "Not an evidence problem. Routed to the normal billing queue."; return; }
+  const accepted = r.candidates.filter(c => c.accepted);
+  const idBlocked = r.candidates.filter(c => c.rejected_by === "Identity check");
+  if (!accepted.some(c => CONF_RANK[c.confidence] <= 1)) {
+    if (idBlocked.length) {
+      r.status = "Needs review";
+      r.banner = `Identity check blocked ${idBlocked.length} of ${r.candidates.length} quotes. They come from another patient's record or from outside the date window. No appeal drafted. Check for a misfiled document.`;
+    } else { r.status = "No proof"; r.banner = r.no_evidence_reason || "No evidence found in the chart. No appeal drafted."; }
+    return;
+  }
+  if (!r.draft.length) { r.status = "Needs review"; r.banner = "The draft was empty after the guards. See the agent trace."; }
+  else if (r.flags.length || selected(r).some(q => q.confidence !== "high")) {
+    r.status = "Needs review"; r.banner = "Some evidence is indirect or a sentence was flagged. Read the highlighted parts before approving.";
+  } else {
+    r.status = "Ready"; r.banner = "Every factual sentence cites a verified quote from this patient's chart.";
+    if (r.dropped.length) r.banner += ` Guards removed ${r.dropped.length} unsupported sentence(s).`;
+  }
+}
+function totals(r) {
+  r.tokens_in = r.steps.reduce((a, s) => a + s.input_tokens, 0);
+  r.tokens_out = r.steps.reduce((a, s) => a + s.output_tokens, 0);
+  r.cost_usd = r.steps.reduce((a, s) => a + s.cost_usd, 0);
+  r.llm_calls = r.steps.length;
+}
+async function draftAndCheck(r, note, defaultSel) {
+  const quotes = selected(r);
+  note("Drafting appeal");
+  const [st, kept, dropped] = await draft(r.claim, quotes, defaultSel);
+  r.steps.push(st); r.draft = kept; r.dropped = dropped;
+  if (kept.length && !st.error) {
+    note("Self-checking draft");
+    const [st2, flags] = await selfCheck(r.claim, quotes, kept);
+    r.steps.push(st2); r.flags = flags;
+  } else r.flags = [];
+}
+async function runClaim(claim, note = () => {}) {
+  const t0 = performance.now();
+  const docs = DATA.charts[claim.patient_id];
+  const r = {claim, backend: "mock", steps: [], candidates: [], selected_ids: [], draft: [], dropped: [], flags: [],
+    no_evidence_reason: "", doctor_note: "", decision: null, category: null, rationale: ""};
+  note("Classifying denial");
+  let [st, cat, why] = await classify(claim);
+  r.steps.push(st); r.category = cat; r.rationale = why;
+  if (cat !== "out_of_scope" && !st.error) {
+    note("Searching chart for proof");
+    const [st2, cands, noev] = await findProof(claim, docs, cat);
+    r.steps.push(st2); r.candidates = cands; r.no_evidence_reason = noev;
+    const acc = cands.filter(c => c.accepted && (c.confidence === "high" || c.confidence === "medium"))
+      .sort((a, b) => CONF_RANK[a.confidence] - CONF_RANK[b.confidence]);
+    r.selected_ids = acc.slice(0, DATA.maxQuotes).map(c => c.id);
+    if (r.selected_ids.length && !st2.error) await draftAndCheck(r, note, true);
+  }
+  decideStatus(r); totals(r);
+  r.seconds = (performance.now() - t0) / 1000;
+  return r;
+}
+async function redraft(r, ids) {
+  const t0 = performance.now();
+  const ok = new Set(r.candidates.filter(c => c.accepted).map(c => c.id));
+  r.selected_ids = ids.filter(i => ok.has(i));  // a rejected quote can never be selected
+  const n0 = r.steps.length;
+  if (r.selected_ids.length) await draftAndCheck(r, () => {}, false);
+  r.steps.slice(n0).forEach(s => s.name += " (re-draft after swap)");
+  decideStatus(r); totals(r);
+  r.seconds = (r.seconds || 0) + (performance.now() - t0) / 1000;
+}
+function letterText(r) {
+  const c = r.claim;
+  const body = r.draft.map(s => `${s.text} ${s.cites.map(n => `[${n}]`).join("")}`.trim()).join(" ");
+  const refs = selected(r).map((q, i) => `[${i + 1}] ${q.doc_type} ${q.doc_date} (${q.doc_id}): "${q.quote}"`).join("\n");
+  const parts = [`To: ${c.insurer}, Appeals Department`, `Re: Appeal of claim ${c.claim_id} (${c.insurer_code}), patient ${c.patient_name}, date of service ${c.visit_date}`, "", body];
+  if (r.doctor_note) parts.push("", "Additional note from the treating physician:", r.doctor_note);
+  parts.push("", "Cited evidence:", refs);
+  return parts.join("\n");
+}
+function submit(r, atts) {  // simulated insurer submission: stays on this page
+  const now = new Date();
+  const p = {SIMULATED: "No data was sent to any insurer. This record stands in for an electronic appeal submission.",
+    claim_id: r.claim.claim_id, patient_id: r.claim.patient_id, insurer: r.claim.insurer, approved_by: S.approver,
+    approved_at: now.toISOString().slice(0, 19), letter: letterText(r), doctor_note: r.doctor_note || null,
+    attachments: atts.map(d => ({doc_id: d.doc_id, doc_type: d.doc_type, visit_date: d.visit_date, text: d.text})),
+    agent_backend: r.backend, agent_cost_usd: +r.cost_usd.toFixed(6)};
+  S.outbox.unshift(p);
+  return p;
+}
+
+// ------------------------------------------------------------------ rendering
+const statusOf = cid => { const r = S.results[cid]; return !r ? "New" : (r.decision || r.status); };
+const chip = s => `<span class="chip c-${s.split(" ")[0]}">${esc(s)}</span>`;
+
+function renderTotals() {
+  const done = Object.values(S.results), n = done.length;
+  const ready = done.filter(r => r.status === "Ready").length;
+  const caught = done.reduce((a, r) => a + r.candidates.filter(c => !c.accepted).length + r.dropped.length, 0);
+  const cost = n ? done.reduce((a, r) => a + r.cost_usd, 0) / n : 0;
+  const time = n ? done.reduce((a, r) => a + r.seconds, 0) / n : 0;
+  const fresh = denials.filter(c => !S.results[c.claim_id]);
+  const run = S.running;
+  const runUI = run
+    ? `<div class="small num">${esc(run.cid)} (${run.i + 1}/${run.n}) · ${esc(run.msg)}…</div><div class="bar"><div style="width:${Math.round(100 * run.i / run.n)}%"></div></div>`
+    : `<button class="btn primary block" data-act="runall" ${fresh.length && !S.busy ? "" : "disabled"}>${fresh.length ? `▶ Run agent on all new denials (${fresh.length})` : "✓ All denials processed"}</button>`;
+  return `<section class="totals" aria-label="Totals">
+    <div class="tile"><div class="l">Claims processed</div><div class="v">${n} / ${denials.length}</div></div>
+    <div class="tile"><div class="l">Drafts ready</div><div class="v">${ready}</div></div>
+    <div class="tile" title="Quotes rejected by the quote/identity checks + sentences dropped by the draft check"><div class="l">Caught by guards</div><div class="v">${caught}</div></div>
+    <div class="tile"><div class="l">Avg cost / claim</div><div class="v">$${cost.toFixed(4)}</div></div>
+    <div class="tile"><div class="l">Avg time / claim</div><div class="v">${time.toFixed(1)} s</div></div>
+    <div class="runall">${runUI}</div></section>`;
+}
+
+function renderRail() {
+  const total = denials.reduce((a, c) => a + c.amount, 0);
+  const cards = denials.map(c => {
+    const n = daysLeft(c);
+    return `<button class="card${c.claim_id === S.selected ? " sel" : ""}" data-act="open" data-id="${c.claim_id}">
+      <span class="top"><span class="id">${c.claim_id}</span>${chip(statusOf(c.claim_id))}</span>
+      <span class="svc">${esc(c.patient_name.replace(" (synthetic)", ""))} · ${esc(shortService(c))}</span>
+      <span class="bot"><span class="${n <= 7 ? "due-soon" : ""}">⏰ ${dueText(c)}</span><span>${money(c.amount)}</span></span></button>`;
+  }).join("");
+  return `<aside class="rail">
+    <div class="field"><label for="approver">Signed in as</label><input id="approver" value="${esc(S.approver)}" data-input="approver"></div>
+    <h2>Worklist · by deadline</h2><div class="small">${denials.length} denials · ${money(total)} at stake</div>
+    <div class="cards" style="display:grid;gap:8px">${cards}</div>
+    <button class="btn" data-act="reset">↺ Reset demo</button>
+    <div class="small">All patients and records are synthetic.</div></aside>`;
+}
+
+function renderStepper(r) {
+  const last = p => r.steps.filter(s => s.name.startsWith(p)).pop();
+  const acc = r.candidates.filter(q => q.accepted).length, rej = r.candidates.filter(q => !q.accepted).length;
+  const specs = [
+    ["1", "Classify", last("1."), () => CATEGORY_LABEL[r.category] || "Failed", 0],
+    ["2", "Find proof", last("2."), () => r.candidates.length ? `${acc} verified quote(s)` : "No evidence found", rej],
+    ["3", "Draft appeal", last("3."), () => `${r.draft.length} sentences, each cited`, r.dropped.length],
+    ["4", "Self-check", last("4."), () => r.flags.length ? `${r.flags.length} sentence(s) flagged` : "No sentences flagged", 0],
+  ];
+  let stopped = null;
+  return `<div class="stepper">` + specs.map(([num, title, s, summary, caught]) => {
+    if (!s) {
+      const reason = stopped || (r.category === "out_of_scope" ? "Not needed: out of scope" : num === "3" ? "Stopped: no usable proof" : "Not run");
+      stopped = stopped || reason;
+      return `<div class="step skip"><div class="n">STEP ${num}</div><div class="t">${title}</div><div class="s">${reason}</div></div>`;
+    }
+    const cls = s.error ? "err" : ((num === "4" && r.flags.length) || (num === "2" && acc === 0)) ? "warn" : "ok";
+    const badge = caught ? `<span class="caught">🛡 ${caught} caught</span>` : "";
+    return `<div class="step ${cls}">${badge}<div class="n">STEP ${num}</div><div class="t">${title}</div><div class="s">${esc(s.error ? "Call failed (see trace)" : summary())}</div></div>`;
+  }).join("") + `</div>`;
+}
+
+function quoteBox(q, num, kind = "sel") {
+  const src = q.doc_type ? `📄 ${DOC_TYPE[q.doc_type] || q.doc_type} · ${q.doc_date} · ${esc(q.doc_author)}` : `📄 cited as <code>${esc(q.doc_id)}</code>`;
+  const extra = kind === "rejected" ? `<div class="rej">🛡 ${esc(q.rejected_by)}: ${esc(q.reject_reason)}</div>` : `<div class="why">${esc(q.why_it_helps)}</div>`;
+  const cls = kind === "sel" ? `quote-${num}` : kind;
+  return `<div class="quote ${cls}" ${num ? `data-q="${num}"` : ""}><div class="meta"><span class="conf conf-${q.confidence}">${q.confidence.toUpperCase()}</span>${num ? `<span class="qnum">[${num}]</span>` : ""}</div>
+    <div class="qtext">“${esc(q.quote)}”</div>${extra}<div class="src">${src}</div></div>`;
+}
+
+function highlightDoc(d, r, claim) {
+  let text = esc(d.text);
+  for (const q of r.candidates) {
+    if (q.doc_id !== d.doc_id || !q.quote) continue;
+    const cls = !q.accepted ? "bad" : r.selected_ids.includes(q.id) ? "sel" : "spare";
+    const pat = q.quote.split(/\s+/).filter(Boolean).map(w => esc(w).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("\\s+");
+    text = text.replace(new RegExp(`(${pat})`, "i"), `<mark class="${cls}">$1</mark>`);
+  }
+  const pid = d.patient_id === claim.patient_id ? `<span>patient ${d.patient_id}</span>` : `<span class="pid-bad">patient ${d.patient_id} ≠ ${claim.patient_id}</span>`;
+  return `<div class="doc"><div class="dh"><b>${DOC_TYPE[d.doc_type] || d.doc_type}</b> · ${d.visit_date} · ${esc(d.author)} · ${pid} · <code>${d.doc_id}</code></div>${text}</div>`;
+}
+
+function renderClaim() {
+  const c = byId[S.selected], cid = c.claim_id, r = S.results[cid], docs = DATA.charts[c.patient_id];
+  const busy = S.busy === cid;
+  let headBtn = "";
+  if (busy) headBtn = `<div class="live">● ${esc(S.busyMsg || "Working")}…</div>`;
+  else if (!r) headBtn = `<button class="btn primary" data-act="run" ${S.running ? "disabled" : ""}>▶ Run agent on this claim</button>`;
+  else if (!r.decision) headBtn = `<button class="btn" data-act="run" title="Discard this result and run all 4 steps again" ${S.running ? "disabled" : ""}>↻ Re-run agent</button>`;
+  let h = `<div class="head"><div><span class="cid">${cid}</span>${chip(statusOf(cid))}
+    <div class="facts"><span><b>Patient</b>${esc(c.patient_name)} · ${c.patient_id}</span><span><b>Service</b>${esc(c.service)}</span>
+    <span><b>Date of service</b>${c.visit_date}</span><span><b>Insurer</b>${esc(c.insurer)}</span><span class="num"><b>Amount</b>${money(c.amount, 2)}</span></div></div>${headBtn}</div>`;
+
+  if (r) {
+    h += renderStepper(r);
+    if (r.decision === "Sent") h += `<div class="banner ok">📨 <span><b>Approved by ${esc(r.approved_by)}</b> at ${esc(r.approved_at)}. Simulated submission added to the outbox below. Nothing left this page.</span></div>`;
+    else if (r.decision === "Rejected") h += `<div class="banner bad">✖ <span><b>Rejected by ${esc(r.approved_by)}:</b> ${esc(r.reject_reason)}. Moved to the normal billing queue.</span></div>`;
+    const icon = {"Ready": "✅", "Needs review": "⚠️", "No proof": "🔎", "Out of scope": "↪️"}[r.status] || "ℹ️";
+    const cls = {"Ready": "ok", "Needs review": "warn"}[r.status] || "info";
+    h += `<div class="banner ${cls}">${icon} <span>${esc(r.banner)}</span></div>`;
+  }
+
+  // WHY
+  const n = daysLeft(c);
+  let why = `<div class="col"><div class="colhead">WHY IT WAS DENIED</div><div class="reason">${esc(c.reason_plain)}</div>
+    <div class="codebox"><b>${esc(c.insurer_code)}</b><br>${esc(c.insurer_text)}</div>
+    <div><span class="due ${n <= 7 ? "soon" : ""}">⏰ ${dueText(c)}</span></div>
+    <div class="muted num">Appeal deadline ${c.deadline}<br>${money(c.amount, 2)} at stake</div>`;
+  if (r && r.category && r.category !== "error")
+    why += `<div class="sechead">Agent classified as</div><b>${CATEGORY_LABEL[r.category] || esc(r.category)}</b><div class="muted">${esc(r.rationale)}</div>`;
+  why += `</div>`;
+
+  // PROOF
+  let proof = `<div class="col"><div class="colhead">PROOF FOUND</div>`;
+  if (!r) proof += `<div class="letter empty">The agent will search ${docs.length} documents in this patient's chart.</div>`;
+  else if (r.category === "out_of_scope") proof += `<div class="letter empty">Not searched. This denial is a billing issue, not missing evidence.</div>`;
+  else {
+    const sel = selected(r);
+    proof += sel.length ? sel.map((q, i) => quoteBox(q, i + 1)).join("")
+      : `<div class="quote"><b>🔎 No evidence found</b><div class="why">${esc(r.no_evidence_reason || "No usable quote survived the guards.")}</div></div>`;
+    const spare = r.candidates.filter(q => q.accepted && !r.selected_ids.includes(q.id));
+    if (spare.length) proof += `<div class="sechead">Also verified, not used · swap in with “Swap proof”</div>` + spare.map(q => quoteBox(q, null, "spare")).join("");
+    const rej = r.candidates.filter(q => !q.accepted);
+    if (rej.length) proof += `<div class="sechead red">🛡 Rejected by guards · never shown to the insurer</div>` + rej.map(q => quoteBox(q, null, "rejected")).join("");
+    const used = new Set(r.candidates.map(q => q.doc_id));
+    const srcDocs = docs.filter(d => used.has(d.doc_id));
+    if (srcDocs.length) proof += `<details class="details" data-toggle="ctx" ${S.ctx ? "open" : ""}><summary>📄 See quotes in context (${srcDocs.length} of ${docs.length} chart documents)</summary>
+      <div class="inner"><div class="muted"><mark class="sel">used</mark> · <mark class="spare">verified, not used</mark> · <mark class="bad">rejected</mark></div>
+      ${srcDocs.map(d => highlightDoc(d, r, c)).join("")}</div></details>`;
+  }
+  proof += `</div>`;
+
+  // DRAFT
+  let dr = `<div class="col"><div class="colhead">DRAFT APPEAL</div>`;
+  if (!r) dr += `<div class="letter empty">Run the agent to draft an appeal.</div>`;
+  else if (!r.draft.length) {
+    const idb = r.candidates.some(q => q.rejected_by === "Identity check");
+    const msg = r.category === "out_of_scope" ? "No appeal. Routed to the normal billing queue."
+      : idb ? "No appeal drafted. Every quote the agent found was blocked by the identity check (another patient's record, or outside the date window). Check the chart for a misfiled document."
+      : r.status === "No proof" ? "No appeal drafted. The chart does not contain proof, and the agent never writes an appeal without evidence."
+      : "No appeal drafted. See the banner and the agent trace.";
+    dr += `<div class="letter empty">${esc(msg)}</div>`;
+  } else {
+    const flags = Object.fromEntries(r.flags.map(f => [f.sentence, f]));
+    const parts = r.draft.map((s, i) => {
+      let t = esc(s.text);
+      if (flags[i]) t = `<span class="flag-${flags[i].severity}" title="${esc(flags[i].severity.toUpperCase() + ": " + flags[i].issue)}">${t}</span>`;
+      return t + s.cites.map(k => `<button class="cite cite-${k}" data-act="pin" data-n="${k}" aria-label="Show quote ${k}">${k}</button>`).join("");
+    });
+    dr += `<div class="letter"><div class="hdr">To: ${esc(c.insurer)}, Appeals Department<br>Re: Claim ${cid} (${esc(c.insurer_code)}) · ${esc(c.patient_name)} · DOS ${c.visit_date}</div>${parts.join(" ")}`;
+    if (r.doctor_note) dr += `<div class="drnote"><b>Note from the treating physician</b> <span class="muted">· written by ${esc(S.approver)}, inserted verbatim</span><br>${esc(r.doctor_note)}</div>`;
+    dr += `<div class="sig">Signature is applied when a physician approves.</div></div>
+      <div class="small">Hover or click a citation to highlight its quote. Amber = weak, red = unsupported (hover the sentence for why).</div>`;
+    dr += r.flags.map(f => `<div class="note ${f.severity === "unsupported" ? "red" : "amber"}"><b>Self-check · sentence ${f.sentence + 1} · ${f.severity.toUpperCase()}</b><br>${esc(f.issue)}</div>`).join("");
+    dr += r.dropped.map(d => `<div class="note red"><b>🛡 Removed by guard</b> · ${esc(d.reason)}<br><s>${esc(d.text)}</s></div>`).join("");
+  }
+  dr += `</div>`;
+  h += `<div class="cols">${why}${proof}${dr}</div>`;
+
+  // ACTIONS
+  if (r && r.category !== "out_of_scope") {
+    const decided = r.decision === "Sent" || r.decision === "Rejected";
+    const pool = r.candidates.filter(q => q.accepted);
+    const dis = c2 => (c2 || S.busy) ? "disabled" : "";
+    h += `<div class="actions">
+      <button class="btn primary" data-act="panel" data-p="approve" ${dis(decided || !r.draft.length)}>✅ Approve + send</button>
+      <button class="btn" data-act="panel" data-p="swap" ${dis(decided || pool.length < 2)}>🔁 Swap proof</button>
+      <button class="btn" data-act="panel" data-p="note" ${dis(decided || !r.draft.length)}>📝 Add a note</button>
+      <button class="btn" data-act="panel" data-p="reject" ${dis(decided)}>✖ Reject</button></div>`;
+    if (S.panel && !decided) h += renderPanel(r, docs, pool);
+  }
+
+  // TRACE
+  if (r) {
+    const tabs = r.steps.map((s, i) => {
+      const nr = s.guard_events.filter(e => e.level === "reject").length, nw = s.guard_events.filter(e => e.level === "warn").length;
+      return `<button class="tab ${i === S.traceTab ? "on" : ""}" data-act="tab" data-i="${i}">${esc(s.name)}${nr ? ` 🛡${nr}` : ""}${nw ? ` ⚠${nw}` : ""}</button>`;
+    }).join("");
+    const s = r.steps[Math.min(S.traceTab, r.steps.length - 1)];
+    const stop = r.category === "out_of_scope" ? "Stopped after step 1: out of scope." : (!r.draft.length ? "Stopped after step 2: no usable proof survived the guards, so no appeal was drafted." : "");
+    h += `<details class="details" data-toggle="trace" ${S.trace ? "open" : ""}><summary>🔍 Agent trace · ${r.llm_calls} LLM call(s) · ${r.tokens_in.toLocaleString()} in / ${r.tokens_out.toLocaleString()} out tokens · $${r.cost_usd.toFixed(5)} · ${r.seconds.toFixed(1)}s · mock</summary>
+      <div class="inner"><div class="small">What the model was asked, what it returned, and what the deterministic guards did with it. Red lines are agent mistakes caught before the doctor saw them.</div>
+      <div class="tabs" role="tablist">${tabs}</div>
+      <div class="kpis"><div class="tile"><div class="l">Input tokens</div><div class="v">${s.input_tokens.toLocaleString()}</div></div>
+        <div class="tile"><div class="l">Output tokens</div><div class="v">${s.output_tokens.toLocaleString()}</div></div>
+        <div class="tile"><div class="l">Cost</div><div class="v">$${s.cost_usd.toFixed(6)}</div></div>
+        <div class="tile"><div class="l">Latency</div><div class="v">${s.latency_s.toFixed(2)} s</div></div></div>
+      <div class="sechead">Guard results</div>${s.guard_events.map(e => `<div class="ev ev-${e.level}">[${esc(e.guard)}] ${esc(e.msg)}</div>`).join("")}
+      <div class="io"><div><div class="sechead">Prompt · model ${esc(s.model)}</div><pre class="code">${esc(`SYSTEM:\n${s.system}\n\nUSER:\n${s.user}`)}</pre></div>
+        <div><div class="sechead">Raw model output</div><pre class="code">${esc(s.raw || s.error || "(empty)")}</pre></div></div>
+      ${stop ? `<div class="small">${stop}</div>` : ""}</div></details>`;
+  }
+  return `<main class="claim" id="claim" ${S.pin ? `data-pin="${S.pin}"` : ""}>${h}</main>`;
+}
+
+function renderPanel(r, docs, pool) {
+  if (S.panel === "approve") {
+    const atts = attachmentsFor(r.draft, selected(r), docs);
+    return `<div class="panel"><h3>Approve and send</h3><div><b>Signing as</b> ${esc(S.approver)}</div>
+      <div><b>Attachments.</b> Only the documents cited in the letter:</div>
+      <ul>${atts.map(d => `<li>${DOC_TYPE[d.doc_type] || d.doc_type} · ${d.visit_date} · <code>${d.doc_id}</code></li>`).join("")}</ul>
+      <div class="small">The other ${docs.length - atts.length} chart document(s) are NOT sent.</div>
+      ${r.flags.length ? `<div class="banner warn">⚠️ <span>${r.flags.length} sentence(s) are flagged. Consider Swap proof or Add a note first.</span></div>` : ""}
+      <label class="chk"><input type="checkbox" id="ack" data-input="ack"> I have read the letter and checked the cited evidence.</label>
+      <div class="row"><button class="btn primary" id="confirm" data-act="confirm" disabled>Confirm and send (simulated)</button><button class="btn" data-act="panel" data-p="">Cancel</button></div></div>`;
+  }
+  if (S.panel === "swap") {
+    return `<div class="panel"><h3>Swap proof</h3><div class="small">Choose up to ${DATA.maxQuotes} verified quotes for the letter, then re-draft (steps 3 + 4 run again). Rejected quotes cannot be chosen.</div>
+      ${pool.map(q => `<label class="chk"><input type="checkbox" name="swap" value="${q.id}" ${r.selected_ids.includes(q.id) ? "checked" : ""}> <span><span class="conf conf-${q.confidence}">${q.confidence.toUpperCase()}</span> ${esc(short(q.quote, 110))}</span></label>`).join("")}
+      <div class="row"><button class="btn primary" data-act="redraft">Re-draft with this proof</button><button class="btn" data-act="panel" data-p="">Cancel</button></div></div>`;
+  }
+  if (S.panel === "note") {
+    return `<div class="panel"><h3>Add a note</h3><div class="small">Your own words, added to the letter verbatim. The AI never writes medical notes.</div>
+      <label for="drnote" class="small">Physician note</label><textarea id="drnote" rows="4" placeholder="e.g. I examined the patient on … and …">${esc(r.doctor_note)}</textarea>
+      <div class="row"><button class="btn primary" data-act="savenote">Save note</button><button class="btn" data-act="panel" data-p="">Cancel</button></div></div>`;
+  }
+  if (S.panel === "reject") {
+    return `<div class="panel"><h3>Reject</h3><label for="rreason" class="small">Reason</label><select id="rreason">
+      ${["Evidence is not convincing", "Wrong patient / wrong record", "Will handle manually", "Not worth appealing"].map(x => `<option>${x}</option>`).join("")}</select>
+      <div class="row"><button class="btn" data-act="reject">Reject and move to billing queue</button><button class="btn" data-act="panel" data-p="">Cancel</button></div></div>`;
+  }
+  return "";
+}
+
+function renderOutbox() {
+  if (!S.outbox.length) return "";
+  return `<details class="details outbox" open><summary>📨 Outbox (simulated) · ${S.outbox.length} submission(s). Nothing is sent anywhere.</summary><div class="inner">
+    ${S.outbox.map(p => `<div class="small"><b>${p.claim_id}</b> · approved by ${esc(p.approved_by)} at ${p.approved_at} · ${p.attachments.length} attachment(s)</div><pre class="code">${esc(JSON.stringify(p, null, 2))}</pre>`).join("")}</div></details>`;
+}
+
+function render() {
+  const app = document.getElementById("app");
+  const y = window.scrollY;
+  app.innerHTML = `<header class="appbar"><div class="brand">Claim Rescue<small>Denials → evidence-backed appeal drafts. A doctor approves every one.</small></div>
+      <span class="badge"><i></i>Offline mock AI · canned responses</span></header>
+    <div class="notice">This shareable version runs in your browser with the canned model responses from the demo's offline mode, so it needs no API key. The guards, status rules and approval flow are the same code paths, ported to JavaScript. The Python app can also call Claude or a local model.</div>
+    ${renderTotals()}
+    <div class="main">${renderRail()}${renderClaim()}</div>
+    ${renderOutbox()}
+    ${S.toast ? `<div class="toast" role="status">${esc(S.toast)}</div>` : ""}`;
+  window.scrollTo(0, y);
+}
+let toastTimer;
+function toast(msg) { S.toast = msg; clearTimeout(toastTimer); toastTimer = setTimeout(() => { S.toast = null; render(); }, 2600); }
+
+// ------------------------------------------------------------------ events
+document.addEventListener("click", async e => {
+  const el = e.target.closest("[data-act]");
+  if (!el || el.disabled) return;
+  const act = el.dataset.act;
+  const cid = S.selected, r = S.results[cid];
+  if (act === "open") { S.selected = el.dataset.id; S.panel = null; S.traceTab = 0; S.pin = null; render(); }
+  else if (act === "reset") { Object.assign(S, {results: {}, panel: null, traceTab: 0, pin: null, outbox: [], running: null, busy: null}); render(); }
+  else if (act === "pin") { S.pin = S.pin === el.dataset.n ? null : el.dataset.n; document.getElementById("claim").dataset.pin = S.pin || ""; }
+  else if (act === "tab") { S.traceTab = +el.dataset.i; render(); }
+  else if (act === "panel") { const p = el.dataset.p || null; S.panel = p && p === S.panel ? null : p; render(); }
+  else if (act === "run") {
+    S.busy = cid; S.busyMsg = "Starting"; S.panel = null; S.traceTab = 0; render();
+    const res = await runClaim(byId[cid], m => { S.busyMsg = m; render(); });
+    S.results[cid] = res; S.busy = null; toast(`${cid}: ${res.status}`); render();
+  }
+  else if (act === "runall") {
+    const fresh = denials.filter(c => !S.results[c.claim_id]);
+    for (let i = 0; i < fresh.length; i++) {
+      const c = fresh[i];
+      S.running = {i, n: fresh.length, cid: c.claim_id, msg: "Starting"}; render();
+      S.results[c.claim_id] = await runClaim(c, m => { S.running.msg = m; render(); });
+    }
+    S.running = null; toast(`Processed ${fresh.length} denial(s).`); render();
+  }
+  else if (act === "confirm") {
+    const docs = DATA.charts[r.claim.patient_id];
+    const p = submit(r, attachmentsFor(r.draft, selected(r), docs));
+    Object.assign(r, {decision: "Sent", approved_by: S.approver, approved_at: p.approved_at.replace("T", " ").slice(0, 16)});
+    S.panel = null; toast(`${cid} approved. Simulated submission added to the outbox.`); render();
+  }
+  else if (act === "redraft") {
+    const ids = [...document.querySelectorAll('input[name="swap"]:checked')].map(x => x.value);
+    if (!ids.length) { toast("Choose at least one quote."); render(); return; }
+    S.busy = cid; S.busyMsg = "Re-drafting"; S.panel = null; render();
+    await redraft(r, ids);
+    S.busy = null; S.traceTab = r.steps.length - 1; toast("Re-drafted with the proof you chose."); render();
+  }
+  else if (act === "savenote") { r.doctor_note = document.getElementById("drnote").value.trim(); S.panel = null; toast("Note saved, inserted verbatim."); render(); }
+  else if (act === "reject") {
+    Object.assign(r, {decision: "Rejected", approved_by: S.approver, reject_reason: document.getElementById("rreason").value});
+    S.panel = null; render();
+  }
+});
+document.addEventListener("input", e => {
+  const k = e.target.dataset.input;
+  if (k === "approver") S.approver = e.target.value;
+  if (k === "ack") document.getElementById("confirm").disabled = !e.target.checked;
+});
+document.addEventListener("change", e => {
+  if (e.target.name === "swap") {
+    const boxes = [...document.querySelectorAll('input[name="swap"]')];
+    const n = boxes.filter(b => b.checked).length;
+    boxes.forEach(b => { if (!b.checked) b.disabled = n >= DATA.maxQuotes; });
+  }
+});
+document.addEventListener("toggle", e => {
+  const k = e.target.dataset && e.target.dataset.toggle;
+  if (k === "ctx") S.ctx = e.target.open;
+  if (k === "trace") S.trace = e.target.open;
+}, true);
+render();
+</script>
+
+</body></html>

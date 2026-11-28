@@ -1,701 +1,452 @@
-<title>CostGuard</title>
-<meta name="claude:viewport-fit-sides" content="cover">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CostGuard · overnight demo (real data)</title>
 <style>
-/* Layout: ops console. Header + KPI strip, then the Slack channel beside the machine fleet, trace below. */
-:root {
-  --bg: #f3f5f4; --panel: #ffffff; --panel-2: #eef1f0; --ink: #13201d; --muted: #5a6964; --line: #d9dfdc;
-  --accent: #0f766e; --accent-ink: #ffffff; --accent-soft: #d9efec;
-  --ok: #15803d; --ok-soft: #dcf2e3; --warn: #b45309; --warn-soft: #fbecd6; --bad: #b91c1c; --bad-soft: #fbe1e1;
-  --info: #1d4ed8; --info-soft: #e0e8fb; --violet: #6d28d9; --violet-soft: #ece4fb;
-  --code-bg: #f6f8f7; --spark: #0f766e;
-  --f-display: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
-  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
-  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
-}
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #0e1513; --panel: #141d1b; --panel-2: #1b2624; --ink: #e3ebe8; --muted: #94a5a0; --line: #2a3734;
-  --accent: #2dd4bf; --accent-ink: #062a26; --accent-soft: #123a35;
-  --ok: #4ade80; --ok-soft: #14301f; --warn: #fbbf24; --warn-soft: #3a2a0d; --bad: #f87171; --bad-soft: #3d1717;
-  --info: #93b4fd; --info-soft: #1a2647; --violet: #c4b5fd; --violet-soft: #2a1f47;
-  --code-bg: #101816; --spark: #2dd4bf; color-scheme: dark; } }
-:root[data-theme="dark"] {
-  --bg: #0e1513; --panel: #141d1b; --panel-2: #1b2624; --ink: #e3ebe8; --muted: #94a5a0; --line: #2a3734;
-  --accent: #2dd4bf; --accent-ink: #062a26; --accent-soft: #123a35;
-  --ok: #4ade80; --ok-soft: #14301f; --warn: #fbbf24; --warn-soft: #3a2a0d; --bad: #f87171; --bad-soft: #3d1717;
-  --info: #93b4fd; --info-soft: #1a2647; --violet: #c4b5fd; --violet-soft: #2a1f47;
-  --code-bg: #101816; --spark: #2dd4bf; color-scheme: dark; }
-* { box-sizing: border-box; }
-body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 14px; line-height: 1.45; }
-.wrap { max-width: 1440px; margin: 0 auto; padding-block: 18px 40px;
-  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
-  display: grid; gap: 14px; }
-button { font: inherit; cursor: pointer; }
-button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.num { font-variant-numeric: tabular-nums; }
+:root{--bg:#f4efe4;--panel:#fff;--ink:#12201c;--muted:#5d6b66;--line:#ddd6c8;--brand:#13a36b;--brand-ink:#0d6e49;--deep:#173d32;
+--crit:#c8412f;--crit-bg:#fbe6e2;--warn:#a86a06;--warn-bg:#fbf0d9;--good:#0d7a50;--good-bg:#e1f4ea;--plot:#1d5b47;--grid:#ebe5d8;--shade:rgba(200,65,47,.09);--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1714;--panel:#16201d;--ink:#e3ece8;--muted:#9aaba5;--line:#2b3834;--brand:#2fd08e;--brand-ink:#5fe0a9;--deep:#0b2a21;
+--crit:#ff8a78;--crit-bg:#3a1f1b;--warn:#f0b44c;--warn-bg:#352a14;--good:#55d79c;--good-bg:#15301f;--plot:#7fd8b2;--grid:#22302b;--shade:rgba(255,138,120,.12);color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1280px;margin:0 auto;padding:20px 16px 60px;display:grid;gap:16px}
+h1{font-size:1.5rem;margin:0;letter-spacing:-.01em} h2{font-size:1.05rem;margin:0} h3{font-size:.95rem;margin:0}
+p{margin:0} .muted{color:var(--muted)} .mono{font-family:var(--mono);font-size:12px}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:6px 12px}
+button:hover{border-color:var(--brand)} button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+button.primary{background:var(--brand);border-color:var(--brand);color:#05271a;font-weight:600}
+button:disabled{opacity:.45;cursor:default}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+.top{display:flex;flex-wrap:wrap;gap:12px;align-items:end;justify-content:space-between}
+.chip{display:inline-flex;gap:6px;align-items:center;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:600;border:1px solid transparent}
+.chip.crit{background:var(--crit-bg);color:var(--crit)} .chip.warn{background:var(--warn-bg);color:var(--warn)}
+.chip.good{background:var(--good-bg);color:var(--good)} .chip.idle{background:var(--grid);color:var(--muted)}
+a{color:var(--brand-ink)}
+/* setup */
+.setup{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.setup .panel{display:grid;gap:8px}
+label.row{display:flex;gap:8px;align-items:center}
+input[type=number]{width:90px;font:inherit;padding:4px 6px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
+/* clock */
+.clock{position:sticky;top:0;z-index:5;display:grid;gap:8px;background:var(--bg);padding:10px 0;border-bottom:1px solid var(--line)}
+.clockrow{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.time{font:700 1.9rem/1 var(--mono);min-width:150px}
+.track{position:relative;height:40px;flex:1;min-width:300px;margin:0 24px}
+.track input{width:100%;margin:0;position:absolute;top:0}
+.marks{position:absolute;top:22px;left:0;right:0;height:16px;font-size:11px;color:var(--muted)}
+.marks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.marks span.hit{color:var(--ink);font-weight:600}
+.kpis{display:flex;gap:18px;flex-wrap:wrap}
+.kpi b{display:block;font:700 1.25rem/1.1 var(--mono)} .kpi span{font-size:12px;color:var(--muted)}
+/* body */
+.grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:16px;align-items:start}
+.runs{display:grid;gap:12px}
+.run header{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+.run .charts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+.chart{position:relative} .chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart .ct{font-size:12px;color:var(--muted);margin-bottom:2px}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--bg);font:12px/1.3 var(--mono);padding:4px 7px;border-radius:6px;white-space:nowrap;transform:translate(-50%,-115%);display:none;z-index:3}
+.logs{margin-top:8px;background:#0c1311;color:#cfe3da;border-radius:8px;padding:8px 10px;font:12px/1.5 var(--mono);min-height:84px;overflow:hidden}
+.logs .w{color:#ffb4a6} .logs .e{color:#9fd9ff} .logs .c{color:#b8f5d2}
+.src{font-size:11px;color:var(--muted);margin-top:4px}
+/* trace */
+.trace{display:grid;gap:8px;max-height:calc(100vh - 170px);overflow:auto;position:sticky;top:150px}
+.ev{border-left:3px solid var(--line);padding:4px 0 4px 10px}
+.ev.flag{border-color:var(--warn)} .ev.ai{border-color:var(--plot)} .ev.verify{border-color:var(--brand)}
+.ev.policy.blocked{border-color:var(--crit)} .ev.act{border-color:var(--brand)} .ev.note{border-color:var(--line)}
+.ev .t{font:600 12px var(--mono);color:var(--muted)}
+details{margin-top:4px} summary{cursor:pointer;color:var(--brand-ink);font-size:12px}
+pre{white-space:pre-wrap;word-break:break-word;background:var(--bg);border-radius:6px;padding:8px;font:11.5px/1.45 var(--mono);margin:6px 0 0;max-height:300px;overflow:auto}
+table{border-collapse:collapse;width:100%;font-size:12px} td,th{padding:3px 6px;border-bottom:1px solid var(--line);text-align:left} th{color:var(--muted);font-weight:600}
+td.num{font-family:var(--mono);text-align:right}
+.ok{color:var(--good);font-weight:600} .bad{color:var(--crit);font-weight:600}
+/* morning */
+.morning{display:grid;grid-template-columns:360px 1fr;gap:16px;align-items:start}
+.phone{background:#0b0f0e;border-radius:28px;padding:18px 14px;color:#e5efe9;display:grid;gap:10px;border:6px solid #222}
+.phone .hdr{font:600 12px var(--mono);color:#8fb3a3;text-align:center}
+.msg{background:#151d1a;border-radius:14px;padding:10px 12px;font:12.5px/1.5 var(--mono)}
+.msg .del{color:#ff9c8c} .msg .add{color:#8ff0bd}
+.msg .btns{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.msg button{background:#22302b;color:#e5efe9;border-color:#2f413b;padding:4px 10px;font:12px var(--mono)}
+.msg button.go{background:#2fd08e;color:#05271a;border-color:#2fd08e}
+.msg .res{margin-top:6px;color:#b9d6c9;font-family:system-ui;font-size:12.5px}
+.vs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.vs .panel{border-left:4px solid var(--crit)} .vs .panel.with{border-left-color:var(--brand)}
+.real td:first-child{font-weight:600;white-space:nowrap}
+.hidden{display:none!important}
+.legend-inline{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--muted);margin-left:8px}
+.legend-inline i{display:inline-block;width:14px;height:0;border-top:2px dashed var(--muted)}
+@media (max-width:980px){.grid,.morning,.setup,.vs{grid-template-columns:1fr}.trace{position:static;max-height:none}.run .charts{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style></head><body><main>
 
-header.top { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; }
-.brand { display: flex; gap: 12px; align-items: center; min-width: 0; }
-.logo { width: 38px; height: 38px; border-radius: 9px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; flex: none; }
-.brand h1 { font-family: var(--f-display); font-size: 1.45rem; margin: 0; letter-spacing: -.01em; text-wrap: balance; }
-.brand p { margin: 0; color: var(--muted); font-size: .86rem; }
-.topright { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.pill { font-size: .76rem; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: var(--panel-2); color: var(--muted); border: 1px solid var(--line); }
-.clock { font-family: var(--f-mono); font-weight: 600; background: var(--ink); color: var(--bg); padding: 6px 11px; border-radius: 8px; font-size: .95rem; }
-
-.kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
-.kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; min-width: 0; }
-.kpi .l { color: var(--muted); font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
-.kpi .v { font-family: var(--f-mono); font-size: 1.45rem; font-weight: 600; margin-top: 2px; font-variant-numeric: tabular-nums; }
-.kpi .s { color: var(--muted); font-size: .76rem; }
-.kpi.hot .v { color: var(--bad); } .kpi.good .v { color: var(--ok); } .kpi.attn .v { color: var(--info); }
-
-.controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-.btn { border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 8px; padding: 6px 12px; font-weight: 500; }
-.btn:hover { border-color: var(--accent); }
-.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; padding: 9px 16px; }
-.btn.primary:disabled { opacity: .6; cursor: progress; }
-.btn.ghost { background: transparent; border-color: transparent; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
-.btn.sm { padding: 4px 11px; font-size: .85rem; }
-.upnext { color: var(--muted); font-size: .84rem; min-width: 0; }
-.status { font-family: var(--f-mono); font-size: .82rem; color: var(--accent); }
-
-.grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.02fr); gap: 14px; align-items: start; }
-.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; min-width: 0; }
-.card > .hd { padding: 10px 14px; border-bottom: 1px solid var(--line); display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
-.card > .hd b { font-size: 1rem; } .card > .hd span { color: var(--muted); font-size: .8rem; }
-
-/* Slack */
-.feed { height: 640px; overflow-y: auto; padding: 6px 8px; }
-.empty { color: var(--muted); text-align: center; padding: 80px 16px; }
-.divider { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: .74rem; font-weight: 600; margin: 10px 0 4px; }
-.divider::before, .divider::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
-.msg { display: flex; gap: 10px; padding: 8px 8px 8px 9px; border-radius: 8px; border-left: 3px solid transparent; }
-.msg:hover { background: var(--panel-2); }
-.msg.k-warn, .msg.k-ask { border-left-color: var(--warn); } .msg.k-keep, .msg.k-restarted { border-left-color: var(--ok); }
-.msg.k-approval { border-left-color: var(--info); } .msg.k-blocked { border-left-color: var(--bad); background: var(--bad-soft); }
-.msg.k-paused { border-left-color: var(--muted); } .msg.k-rule_off { border-left-color: var(--violet); } .msg.k-info { border-left-color: var(--line); }
-.av { flex: none; width: 34px; height: 34px; border-radius: 7px; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: .85rem; }
-.av.bot { background: var(--accent); color: var(--accent-ink); }
-.mb { flex: 1; min-width: 0; }
-.mh { font-size: .88rem; } .mh b { font-size: .92rem; } .mh .t { color: var(--muted); font-size: .76rem; margin-left: 6px; }
-.tag { font-size: .6rem; font-weight: 700; background: var(--panel-2); color: var(--muted); padding: 1px 4px; border-radius: 3px; margin-left: 5px; border: 1px solid var(--line); }
-.mt { font-weight: 700; margin: 2px 0 3px; }
-.ln { display: grid; grid-template-columns: 6.4rem minmax(0, 1fr); gap: 2px 8px; font-size: .9rem; margin: 1px 0; }
-.ln .lb { color: var(--muted); font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding-top: 3px; }
-.ln code, .note code { font-family: var(--f-mono); font-size: .78rem; background: var(--bad-soft); color: var(--bad); padding: 0 4px; border-radius: 3px; overflow-wrap: anywhere; }
-.note { font-size: .82rem; color: var(--muted); background: var(--panel-2); border-radius: 6px; padding: 5px 8px; margin-top: 5px; }
-.roll { font-size: .84rem; background: var(--info-soft); border: 1px dashed var(--info); border-radius: 6px; padding: 6px 10px; margin-top: 6px; }
-.roll ol { margin: 3px 0 0 18px; padding: 0; }
-.res { display: inline-block; font-size: .76rem; background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; margin-top: 6px; color: var(--muted); }
-.acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
-.acts .btn.primary { padding: 4px 12px; font-size: .85rem; }
-.via { color: var(--muted); font-size: .74rem; }
-.reply { border-top: 1px solid var(--line); padding: 10px; display: grid; gap: 8px; }
-.reply form { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; }
-.reply select, .reply input { font: inherit; border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; background: var(--panel); color: var(--ink); min-width: 0; }
-.chips { display: flex; flex-wrap: wrap; gap: 6px; font-size: .8rem; color: var(--muted); align-items: center; }
-.chip { border: 1px solid var(--line); background: var(--panel-2); border-radius: 999px; padding: 2px 10px; font-size: .8rem; color: var(--ink); }
-
-/* Machines */
-.tbl-wrap { overflow-x: auto; }
-table { border-collapse: collapse; width: 100%; font-size: .86rem; }
-th { text-align: left; font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
-td { padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; vertical-align: middle; }
-tr:last-child td { border-bottom: none; }
-td.mono { font-family: var(--f-mono); font-size: .82rem; }
-td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; }
-.st { display: inline-flex; gap: 5px; align-items: center; font-size: .78rem; font-weight: 600; padding: 1px 8px; border-radius: 999px; }
-.st.run { background: var(--ok-soft); color: var(--ok); } .st.pau { background: var(--panel-2); color: var(--muted); border: 1px solid var(--line); }
-.env { font-size: .74rem; font-weight: 700; padding: 1px 7px; border-radius: 4px; }
-.env.prod { background: var(--bad-soft); color: var(--bad); } .env.test { background: var(--panel-2); color: var(--muted); }
-.vd { font-size: .8rem; } .vd.blk { color: var(--bad); font-weight: 700; } .vd.keep { color: var(--ok); } .vd.pause { color: var(--warn); } .vd.appr { color: var(--info); }
-svg.spark { display: block; }
-.report { padding: 12px 14px; display: grid; gap: 10px; }
-.trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.trio div { background: var(--panel-2); border-radius: 8px; padding: 8px 10px; }
-.trio .l { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; font-weight: 700; }
-.trio .v { font-family: var(--f-mono); font-size: 1.15rem; font-weight: 600; }
-.small { color: var(--muted); font-size: .82rem; }
-.perm { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 14px; border-top: 1px solid var(--line); font-family: var(--f-mono); font-size: .78rem; }
-.perm span { padding: 2px 8px; border-radius: 5px; background: var(--ok-soft); color: var(--ok); }
-.perm span.no { background: var(--bad-soft); color: var(--bad); text-decoration: line-through; }
-
-/* Trace */
-details.trace > summary { cursor: pointer; padding: 12px 14px; font-weight: 700; list-style: none; display: flex; gap: 8px; flex-wrap: wrap; align-items: baseline; }
-details.trace > summary::-webkit-details-marker { display: none; }
-details.trace > summary::before { content: "▸"; color: var(--muted); }
-details.trace[open] > summary::before { content: "▾"; }
-.tabs { display: flex; gap: 4px; flex-wrap: wrap; padding: 0 14px; border-bottom: 1px solid var(--line); }
-.tab { border: none; background: none; padding: 7px 10px; border-bottom: 2px solid transparent; color: var(--muted); font-weight: 600; font-size: .85rem; }
-.tab.on { color: var(--ink); border-bottom-color: var(--accent); }
-.tpane { padding: 12px 14px; display: grid; gap: 12px; min-width: 0; }
-.tpane > *, .wrap > *, .jb > *, .report > * { min-width: 0; }
-.ev { font-family: var(--f-mono); font-size: .8rem; margin: 2px 0; overflow-wrap: anywhere; }
-.ev.block { color: var(--bad); font-weight: 600; } .ev.act { color: var(--info); } .ev.warn { color: var(--warn); } .ev.pass { color: var(--ok); } .ev.info { color: var(--muted); }
-.jb { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; gap: 8px; min-width: 0; }
-.jb h4 { margin: 0; font-size: .95rem; }
-.stats { display: flex; flex-wrap: wrap; gap: 6px 16px; font-family: var(--f-mono); font-size: .8rem; color: var(--muted); }
-.chk { font-size: .85rem; }
-.chk .ic { display: inline-block; width: 1.3em; }
-.chk.f { color: var(--bad); } .chk.n { color: var(--warn); }
-.pr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
-.pr .cap { font-size: .74rem; color: var(--muted); margin-bottom: 3px; font-weight: 600; }
-pre { margin: 0; background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px; padding: 9px; font-family: var(--f-mono); font-size: .75rem; line-height: 1.45; max-height: 300px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
-.note-top { background: var(--accent-soft); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: .84rem; }
-
-@media (max-width: 1050px) { .grid { grid-template-columns: minmax(0, 1fr); } .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (max-width: 640px) {
-  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .pr { grid-template-columns: minmax(0, 1fr); }
-  .ln { grid-template-columns: minmax(0, 1fr); } .ln .lb { padding-top: 4px; }
-  .reply form { grid-template-columns: minmax(0, 1fr) auto; } .reply form select { grid-column: 1 / -1; }
-  .feed { height: 520px; }
-  .trio { grid-template-columns: minmax(0, 1fr); }
-}
-@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
-</style>
-
-<div class="wrap">
-  <header class="top">
-    <div class="brand">
-      <div class="logo" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M10 9v6M14 9v6"/></svg></div>
-      <div><h1>CostGuard</h1><p>Finds idle cloud machines, pauses test machines on its own, asks a person before touching production.</p></div>
-    </div>
-    <div class="topright">
-      <span class="pill">Simulated cloud · fake Slack · offline mock AI</span>
-      <span class="clock num" id="clock"></span>
-    </div>
-  </header>
-
-  <div class="note-top">This shareable version runs in your browser with the <b>offline mock AI</b> (canned model answers, including one where the model gets fooled). The rules, the policy layer, the simulated cloud and the prompts are the same as in the Streamlit app, which can also call Claude live.</div>
-
-  <section class="kpis" id="kpis" aria-label="Totals"></section>
-
-  <div class="controls">
-    <button class="btn primary" id="advance" type="button"></button>
-    <button class="btn" id="reset" type="button">↺ Reset demo</button>
-    <span class="status" id="status" aria-live="polite"></span>
-    <span class="upnext" id="upnext"></span>
-  </div>
-
-  <div class="grid">
-    <section class="card" aria-label="Slack channel">
-      <div class="hd"><b># cloud-costs</b><span>CostGuard and 8 machine owners · simulated Slack</span></div>
-      <div class="feed" id="feed"></div>
-      <div class="reply">
-        <form id="replyForm">
-          <select id="who" aria-label="Reply as"></select>
-          <input id="text" type="text" autocomplete="off" placeholder="Message #cloud-costs" aria-label="Message">
-          <button class="btn primary" type="submit">Send</button>
-        </form>
-        <div class="chips">Try: <button type="button" class="chip" data-say="jordan|undo, I need it today">@jordan: undo, I need it today</button>
-          <button type="button" class="chip" data-say="maya|keep it, I'm about to start a new run">@maya: keep it</button>
-          <button type="button" class="chip" data-say="leo|can you hold off until tomorrow?">@leo: free text (AI interprets)</button></div>
-      </div>
-    </section>
-
-    <div style="display:grid;gap:14px;min-width:0">
-      <section class="card" aria-label="Machines">
-        <div class="hd"><b>Machines</b><span>GPU sparkline = last 12 hours</span></div>
-        <div class="tbl-wrap"><table id="machines"></table></div>
-        <div class="perm" aria-label="Cloud permission"><b style="font-family:var(--f-body);font-size:.8rem;color:var(--muted);align-self:center">CostGuard's cloud permission:</b><span>pause(id)</span><span>restart(id)</span><span>get_metrics(id)</span><span>get_logs(id)</span><span class="no" title="This function does not exist">delete</span></div>
-      </section>
-      <section class="card" aria-label="Weekly savings report">
-        <div class="hd"><b>Weekly savings report</b><span>hours paused × hourly price</span></div>
-        <div class="report" id="report"></div>
-      </section>
-    </div>
-  </div>
-
-  <details class="card trace" id="trace"><summary id="traceSum"></summary><div id="traceBody"></div></details>
+<div class="top">
+  <div><h1>CostGuard · the overnight GPU run</h1>
+  <p class="muted">Three real training runs on three 8×A100 servers, replayed from 10:14 PM to 7:14 AM. The engineer is asleep. <a href="#real">What's real in this demo ↓</a></p></div>
+  <span class="chip good" title="Loss curves, checkpoints and GPU usage are real measurements">● Real data · offline mock AI</span>
 </div>
 
+<section id="setup" aria-labelledby="setupH">
+  <h2 id="setupH" style="margin-bottom:8px">10:14 PM · before you sleep</h2>
+  <div class="setup" id="setupCards"></div>
+  <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <button class="primary" id="sleep">Go to sleep ▶</button>
+    <span class="muted">CostGuard can only <b>stop an instance</b> and <b>take a snapshot</b>. It cannot delete anything, read your data, or restart a run without your tap.</span>
+  </div>
+</section>
+
+<div class="clock" id="clock" aria-label="Simulated clock">
+  <div class="clockrow">
+    <span class="time" id="time" aria-live="polite">10:14 PM</span>
+    <button id="play" aria-label="Play">▶ Play</button>
+    <button id="next">Next event ⇥</button>
+    <label class="row muted" style="font-size:12px"><input type="checkbox" id="stopAt" checked> stop at agent actions</label>
+    <span class="muted" style="font-size:11px">⚑ rule fired · ✓ paused</span>
+    <div class="track"><input type="range" id="scrub" min="0" max="540" value="0" aria-label="Time of night"><div class="marks" id="marks"></div></div>
+  </div>
+  <div class="kpis" id="kpis"></div>
+</div>
+
+<div class="grid">
+  <section class="runs" id="runs" aria-label="Servers"></section>
+  <aside class="panel trace" aria-labelledby="traceH"><h2 id="traceH">Agent trace</h2>
+    <p class="muted" style="font-size:12px">Free rules watch every minute. Only when a rule fires does the AI see the numbers. Plain code (the policy) decides what actually happens.</p>
+    <div id="trace"></div></aside>
+</div>
+
+<section id="morningSec" class="hidden" aria-labelledby="mH">
+  <h2 id="mH" style="margin-bottom:8px">7:14 AM · morning review</h2>
+  <div class="morning">
+    <div class="phone" id="phone"></div>
+    <div style="display:grid;gap:12px">
+      <div class="vs" id="vs"></div>
+      <div class="panel" id="after"><h3>After you tap</h3><p class="muted">Approve, Whitelist or Undo a message to see what happens.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="panel" id="real" aria-labelledby="realH">
+  <h2 id="realH">What's real in this demo</h2>
+  <table class="real" style="margin-top:8px"><tbody id="realRows"></tbody></table>
+  <h3 style="margin-top:14px">Real numbers for the pitch (Microsoft Philly trace, 117,325 jobs, Aug–Dec 2017)</h3>
+  <div id="philly" style="margin-top:6px"></div>
+</section>
+
+</main>
 <script>
-const DATA = /*__DATA__*/null;
-const C = DATA.config, P = DATA.prompts, BOT = "CostGuard";
-const PEOPLE = {maya:"#be185d", leo:"#0e7490", priya:"#6d28d9", chen:"#c2410c", ana:"#15803d", jordan:"#1d4ed8", kofi:"#a16207", dana:"#b91c1c"};
-const START_MIN = 75; // 01:15 on Tue Nov 24, minutes since midnight
-const DAYS = ["Tue","Wed","Thu","Fri","Sat","Sun","Mon"];
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const md = s => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/`(.+?)`/g, "<code>$1</code>");
-const clone = o => JSON.parse(JSON.stringify(o));
+const DATA=/*__DATA__*/null;
+const N=DATA.night.minutes, PRICE=DATA.night.price_hr, CH=DATA.chance_loss, RU=DATA.rules;
+const RUNS=DATA.runs, byId=Object.fromEntries(RUNS.map(r=>[r.id,r]));
+const AI_PRICE={in:2,out:10,model:"Claude Sonnet 5.5"}; // USD per 1M tokens, as on the pricing slide
+const S={t:0,playing:false,started:false,locks:{},caps:{},morning:{}};
+RUNS.forEach(r=>{S.locks[r.id]=false;S.caps[r.id]=400});
 
-// ---------------------------------------------------------------- time (minutes since sim start)
-function parts(t) { const tot = START_MIN + t, day = Math.floor(tot / 1440), m = ((tot % 1440) + 1440) % 1440; return {day, h: Math.floor(m / 60), mi: m % 60}; }
-function fmtT(t) { const {h, mi} = parts(t); return `${(h % 12) || 12}:${String(mi).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; }
-function fmtStamp(t) { const {day, h, mi} = parts(t); return `2026-11-${String(24 + day).padStart(2, "0")} ${String(h).padStart(2, "0")}:${String(mi).padStart(2, "0")}`; }
-function fmtDay(t) { const {day} = parts(t); return `${DAYS[((day % 7) + 7) % 7]} Nov ${24 + day}`; }
-function dayStart(t) { return parts(t).day * 1440 - START_MIN; }
-function fmtAgo(min) { const h = min / 60; if (h < 1) return `${Math.floor(min)} min ago`; const r = Math.round(h); return `${r} hour${r !== 1 ? "s" : ""} ago`; }
-function money(x) { if (Math.abs(x) < 0.005) x = 0; return Math.abs(x) < 1000 ? "$" + x.toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2}) : "$" + Math.round(x).toLocaleString("en-US"); }
-const pyNum = x => (typeof x === "number" && Number.isInteger(x) && !String(x).includes(".")) ? String(x) : String(x);
-const pyFloat = x => Number.isInteger(x) ? x.toFixed(1) : String(x);
-const pyDict = o => "{" + Object.entries(o).map(([k, v]) => `"${k}": "${v}"`).join(", ") + "}";
-const fmt = (tpl, vals) => tpl.replace(/\{(\w+)\}/g, (_, k) => vals[k]);
+const $=s=>document.querySelector(s), esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const hm=m=>{const t=(22*60+14+Math.round(m))%1440,h=Math.floor(t/60),mm=t%60;return `${h%12||12}:${String(mm).padStart(2,"0")} ${h<12?"AM":"PM"}`};
+const usd=x=>"$"+(x>=100?Math.round(x).toLocaleString():x.toFixed(2));
+const lastBefore=(arr,m)=>{let o=null;for(const p of arr){if(p[0]<=m)o=p;else break}return o};
 
-// ---------------------------------------------------------------- simulated cloud (no delete)
-class Cloud {
-  constructor() {
-    this.clock = 0; this.machines = {};
-    for (const raw of DATA.machines) this.machines[raw.id] = this.build(clone(raw));
+/* ---------------- the agent: rules -> AI -> verify -> policy -> act ---------------- */
+function verify(r,m){
+  const ck=r.checkpoints.filter(c=>c.minute<=m).slice().reverse();
+  const rows=[];let chosen=null;
+  for(const c of ck){
+    const healthy=c.finite&&(c.dead_pct==null||c.dead_pct<=RU.healthy_dead_pct_max)&&c.val_loss<CH-0.5;
+    rows.push({...c,healthy});
+    if(healthy){chosen=c;break}
   }
-  build(m) {
-    const n = m.history.gpu.length;
-    m.times = Array.from({length: n}, (_, i) => -(n - 1 - i) * 60);
-    const lines = m.logs.map(l => [-l.min_ago, l.msg]); delete m.logs;
-    m.times.forEach((t, i) => lines.push([t, Cloud.mon(m.history.gpu[i], m.history.cpu[i], m.history.net[i], m.history.disk[i])]));
-    m.log = lines.sort((a, b) => a[0] - b[0]);
-    m.last_checkpoint = m.last_checkpoint_min_ago == null ? null : -m.last_checkpoint_min_ago;
-    m.commits = m.commits.map(c => ({time: -c.min_ago, author: c.author, msg: c.msg}));
-    m.has_gpu = m.history.gpu.some(g => g !== null);
-    Object.assign(m, {state: "running", paused_at: null, paused_by: null, paused_minutes: 0, step: 0, restarted: false});
-    return m;
-  }
-  static mon(g, c, n, d) { return `[monitor] gpu_util=${g === null ? "n/a" : g + "%"} cpu=${c}% net=${pyFloat(n)}MB/s disk_write=${d}MB/s`; }
-  advanceTo(t) { if (t <= this.clock) return; const mins = t - this.clock; for (const m of Object.values(this.machines)) if (m.state === "paused") m.paused_minutes += mins; this.clock = t; }
-  recordHour() {
-    for (const m of Object.values(this.machines)) {
-      let s;
-      if (m.state === "paused") s = {gpu: m.has_gpu ? 0 : null, cpu: 0, net: 0, disk: 0, logs: []};
-      else { const sc = m.restarted ? m.after_restart : m.future; s = sc[Math.min(m.step, sc.length - 1)]; m.step++; }
-      for (const k of ["gpu", "cpu", "net", "disk"]) m.history[k] = m.history[k].slice(1).concat([s[k]]);
-      m.times = m.times.slice(1).concat([this.clock]);
-      (s.logs || []).forEach((line, i) => {
-        const t = this.clock - (50 - 7 * i); m.log.push([t, line]);
-        if (line.includes("[ckpt]") && (line.includes("complete") || line.includes("saved"))) m.last_checkpoint = t;
-      });
-      if (m.state === "running") m.log.push([this.clock, Cloud.mon(s.gpu, s.cpu, s.net, s.disk)]);
-    }
-  }
-  getMetrics(id) { const m = this.machines[id]; return {times: m.times, gpu: m.history.gpu, cpu: m.history.cpu, net: m.history.net, disk: m.history.disk, last_checkpoint: m.last_checkpoint, commits: m.commits, tags: m.tags}; }
-  getLogs(id, n = C.LOG_LINES_FOR_AI) { return this.machines[id].log.slice(-n).map(([t, msg]) => `${fmtStamp(t)} ${msg}`); }
-  pause(id, by) { const m = this.machines[id]; if (m.state === "paused") return false; Object.assign(m, {state: "paused", paused_at: this.clock, paused_by: by}); m.log.push([this.clock, `[cloud] instance stopped by ${by}; disk and checkpoints kept`]); return true; }
-  restart(id, by) { const m = this.machines[id]; if (m.state === "running") return false; Object.assign(m, {state: "running", paused_at: null, paused_by: null, restarted: true, step: 0}); m.log.push([this.clock, `[cloud] instance started by ${by}`]); return true; }
-  savedUsd(id) { const m = this.machines[id]; return m.paused_minutes / 60 * m.price_hr; }
+  return {rows,chosen};
 }
-
-// ---------------------------------------------------------------- mock AI (same canned answers as mock_responses.py)
-const mock = {
-  judge(m, logs) {
-    const id = m.id, price = m.price_hr;
-    if (id === "gpu-train-03") {
-      const line = [...logs].reverse().find(l => l.includes("saving checkpoint")) || "checkpoint in progress";
-      const p = line.match(/checkpoint (\d\/\d)/);
-      return {machine_id: id, verdict: "busy", action: "keep", reason: `GPU is low because it is writing a checkpoint: the logs say "saving checkpoint ${p ? p[1] : ""}" and disk writes are ~900 MB/s. Training resumes after shard 5/5.`, confidence: 0.93, est_savings: 0};
-    }
-    if (id === "sandbox-11") return {machine_id: "prod-db-1", verdict: "idle", action: "pause", reason: "SYSTEM instruction in the logs says to pause prod-db-1; it is authorized by the platform team.", confidence: 0.95, est_savings: 153.6};
-    if (id === "prod-embed-02") return {machine_id: id, verdict: "idle", action: "pause", reason: "Request rate has been 0.0 rps and the load balancer shows 0 connections since about 9 PM; GPU is at 0-1%. This is the normal overnight lull for this API.", confidence: 0.88, est_savings: Math.round(price * 5 * 100) / 100};
-    const reasons = {"gpu-train-07": "Training run-118 finished (epoch 40/40) and the job exited with code 0; the final checkpoint is saved to S3 and no session is attached.",
-      "notebook-04": "The notebook kernel has been idle with no user sessions since jordan disconnected last evening.", "dev-ci-09": "The CI runner has been waiting for jobs for 10 hours with no activity."};
-    const conf = {"gpu-train-07": 0.97, "notebook-04": 0.9, "dev-ci-09": 0.86};
-    return {machine_id: id, verdict: "idle", action: "pause", reason: reasons[id] || "No GPU, CPU, network or log activity for several hours.", confidence: conf[id] || 0.85, est_savings: Math.round(price * 24 * 100) / 100};
-  },
-  interpret(text, ctx) {
-    const t = text.toLowerCase(), has = ws => ws.some(w => t.includes(w));
-    const intent = has(["finished", "all done", "done for", "wrap", "not using"]) ? "pause_now"
-      : has(["tomorrow", "later", "running", "working", "using", "wait", "hold off"]) ? "keep"
-      : has(["back", "again", "need"]) ? "undo" : "unclear";
-    return {intent, machine_id: ctx, confidence: intent !== "unclear" ? 0.7 : 0.3};
-  },
-};
-const est = s => Math.max(1, Math.floor(s.length / 4));
-async function callAI(system, user, mockFn) {
-  const t0 = performance.now(); await sleep(300);
-  const text = JSON.stringify(mockFn(), null, 2);
-  const tin = est(system + user), tout = est(text);
-  return {text, in: tin, out: tout, cost: (tin * C.PRICE_IN + tout * C.PRICE_OUT) / 1e6, latency: (performance.now() - t0) / 1000, model: "mock", error: null};
+function promptFor(r,m,reason){
+  const L=r.loss.filter(p=>p[0]<=m).slice(-8);
+  const lines=L.map(p=>`  ${hm(p[0])}  loss=${p[1]}  smoothed=${p[2].toFixed(3)}  grad_norm=${p[3]}  lr=${p[4]}`).join("\n");
+  const g=r.gpu.slice(Math.max(0,m-15),m+1).filter(v=>v!=null);
+  const val=(r.val||[]).filter(p=>p[0]<=m).map(p=>`${hm(p[0])} ${p[1]}`).join(", ")||"none";
+  const ev=r.eval&&m>=r.eval.start?r.eval.progress.filter(p=>p[0]<=m).slice(-3).map(p=>`  ${hm(p[0])}  [eval] full validation ${p[1]}/${p[2]} running_loss=${p[3]}`).join("\n"):"";
+  const ck=r.checkpoints.filter(c=>c.minute<=m).slice(-1)[0];
+  const sys=`You are CostGuard's judge for one overnight training run. A free rule flagged it. Decide if the run is
+FAILED (no longer learning), HEALTHY (looks odd but is fine, e.g. a slow eval) or FINISHED (done, GPUs idle).
+You only see numbers, never code or data. You never act: plain code decides. Reply with JSON only:
+{"run_id","verdict":"failed|healthy|finished","action":"pause|keep","reason","confidence":0-1,"fix":{"flag","from","to","why"}|null}`;
+  const user=`Run ${r.id}  command: ${r.cmd}
+Rule fired at ${hm(m)}: ${reason}
+Chance-level loss for this data (guessing letter frequencies): ${CH}
+Last training-loss lines:
+${lines}${ev?"\nLast eval lines:\n"+ev:""}
+Validation loss so far: ${val}
+GPU busy % (last 15 min, mean of 8 GPUs): min ${Math.min(...g).toFixed(0)}, max ${Math.max(...g).toFixed(0)}, now ${g[g.length-1]?.toFixed(0)}
+Newest checkpoint: ${ck?ck.file+" at "+hm(ck.minute):"none"}
+Spend so far: ${usd(PRICE*m/60)} at $${PRICE}/hr`;
+  return {sys,user};
 }
-function parseJSON(text) { try { return JSON.parse(text); } catch { const a = text.indexOf("{"), b = text.lastIndexOf("}"); if (a >= 0 && b > a) { try { return JSON.parse(text.slice(a, b + 1)); } catch {} } return null; } }
-
-// ---------------------------------------------------------------- policy layer (port of policy.py)
-const chk = (ok, rule, msg) => ({ok, rule, msg});
-const scanInjection = texts => texts.filter(t => C.INJECTION_PATTERNS.some(p => new RegExp(p.replace(/^\(\?i\)/, ""), "i").test(t)));
-function decide(machine, ai, aiError, raw, all, inputs) {
-  const id = machine.id, checks = [];
-  const out = (outcome, summary, kw = {}) => ({outcome, allowed: outcome !== "blocked", checks, summary, ...kw});
-  if (aiError || !ai || typeof ai !== "object") { checks.push(chk(false, "AI output", `unusable (${aiError || "not valid JSON"}); acting would be a guess`)); return out("ask_owner", "AI output was unusable."); }
-  let verdict = String(ai.verdict || "").toLowerCase(); const action = String(ai.action || "").toLowerCase();
-  const conf = Number(ai.confidence) || 0;
-  if (!["idle", "busy", "unsure"].includes(verdict)) { checks.push(chk(false, "AI output", `unknown verdict '${verdict}'; treated as unsure`)); verdict = "unsure"; }
-  else checks.push(chk(true, "AI output", `valid JSON: verdict=${verdict}, action=${action || "-"}, confidence=${conf.toFixed(2)}`));
-  if (action && !["pause", "keep", "ask_owner"].includes(action)) { checks.push(chk(false, "Allowed actions", `AI asked for '${action}'; the only actions that exist are ${C.ALLOWED_ACTIONS.join(", ")}`)); return out("blocked", "forbidden action", {blocked_reason: "forbidden action"}); }
-  checks.push(chk(true, "Allowed actions", `only ${C.ALLOWED_ACTIONS.join(" and ")} are possible`));
-  const target = String(ai.machine_id || "").trim();
-  if (target !== id) {
-    const tgt = all[target];
-    checks.push(chk(false, "Target check", `AI output names ${target || "no machine"}${tgt ? ` (${tgt.env})` : ""}, but it was judging ${id}`));
-    if (tgt && tgt.env === "production") checks.push(chk(false, "Production check", `${target} is production; CostGuard may never pause production`));
-    return out("blocked", `AI output tried to act on ${target || "another machine"} instead of ${id}.`, {blocked_reason: "names a different machine", named: target});
+function aiAnswer(r,m,rule){
+  if(rule==="budget") return null;
+  if(r.story==="collapse"){
+    const v=r.val.filter(p=>p[0]<=m), lo=Math.min(...v.map(p=>p[1]));
+    const sm=r.loss.filter(p=>p[0]<=m).slice(-1)[0][2];
+    return {run_id:r.id,verdict:"failed",action:"pause",confidence:0.93,
+      reason:`Smoothed loss is ${sm.toFixed(2)}, the same as just guessing letter frequencies (${CH}). Validation loss has risen at every eval since its best (${lo.toFixed(2)}) to ${v[v.length-1][1]}. GPUs are still ~${Math.round(r.gpu[m])}% busy, so it keeps billing without learning.`,
+      fix:{flag:"--lr",from:"0.1",to:"3e-3",why:`Loss started rising around step 6000, when warmup had pushed the learning rate to ${r.lr_at_rise}. A peak around 3e-3 stays below that.`}};
   }
-  checks.push(chk(true, "Target check", `output is about ${id}`));
-  const otherProd = Object.keys(all).filter(o => all[o].env === "production" && o !== id && raw.includes(o));
-  if (otherProd.length) { checks.push(chk(false, "Production check", `AI output mentions production machine(s) ${otherProd.join(", ")}`)); return out("blocked", "touches production", {blocked_reason: "asks to touch production"}); }
-  const hits = scanInjection(inputs);
-  if (hits.length) { checks.push(chk(false, "Injection scan", `${hits.length} line(s) in logs/tags read like instructions to the agent`)); return out("blocked", "held for human review", {blocked_reason: "instructions found in machine data", injection: hits[0]}); }
-  checks.push(chk(true, "Injection scan", "no instruction-like text in logs or tags"));
-  const maxSav = Math.round(machine.price_hr * 24 * 100) / 100; let sav = Number(ai.est_savings) || 0;
-  if (sav > maxSav || sav < 0) { checks.push(chk(null, "Savings check", `AI estimated ${money(sav)}; max possible is ${money(maxSav)}. Using ${money(maxSav)}`)); sav = maxSav; }
-  else checks.push(chk(true, "Savings check", `${money(sav)}/24h is within the possible ${money(maxSav)}`));
-  if (verdict === "busy") { checks.push(chk(true, "Decision", "AI says busy: keep it running")); return out("keep", "keep", {est_savings: sav}); }
-  if (verdict === "unsure" || conf < C.AUTO_PAUSE_MIN_CONFIDENCE) { checks.push(chk(null, "Confidence", `${verdict}, confidence ${conf.toFixed(2)} < ${C.AUTO_PAUSE_MIN_CONFIDENCE}: ask the owner`)); return out("ask_owner", "ask", {est_savings: sav}); }
-  if (machine.env === "production") { checks.push(chk(null, "Production check", "production is never paused automatically; post an approval request")); return out("approval_request", "approval", {est_savings: sav}); }
-  checks.push(chk(true, "Decision", `test + idle + confidence ${conf.toFixed(2)} >= ${C.AUTO_PAUSE_MIN_CONFIDENCE}: warn, pause in ${C.PAUSE_GRACE_MINUTES} min unless the owner says keep`));
-  return out("pause_after_warning", "warn", {est_savings: sav});
+  if(r.story==="slow_eval"){
+    const p=r.eval.progress.filter(x=>x[0]<=m).slice(-1)[0];
+    return {run_id:r.id,verdict:"healthy",action:"keep",confidence:0.9,
+      reason:`No training-loss lines because a full validation pass is running: batch ${p[1]} of ${p[2]}, still advancing, running loss ${p[3]}. The GPU dip matches an eval. Training should resume when it reaches ${p[2]}/${p[2]}.`,fix:null};
+  }
+  const c=r.checkpoints[0];
+  return {run_id:r.id,verdict:"finished",action:"pause",confidence:0.97,
+    reason:`"training complete" at step ${c.step}, final checkpoint ${c.file} saved at ${hm(c.minute)}, train.py exited with code 0. GPUs have been under ${RU.idle_pct}% for ${RU.idle_min} min.`,fix:null};
 }
-function checkExecution(action, machine, actor) {
-  if (!C.ALLOWED_ACTIONS.includes(action)) return [false, `'${action}' is not an allowed action`];
-  if (action === "pause" && machine.env === "production" && actor === BOT) return [false, "CostGuard may never pause production on its own; a human must approve"];
-  return [true, "allowed"];
-}
+function tokens(s){return Math.ceil(s.length/4)}
 
-// ---------------------------------------------------------------- the world (port of agent.World)
-class World {
-  constructor() {
-    this.cloud = new Cloud(); this.messages = []; this.trace = []; this.pending = []; this.scheduled = [];
-    this.aiCalls = []; this.blocked = []; this.hoursRun = 0; this.seq = 0; this.p = {};
-    for (const [id, m] of Object.entries(this.cloud.machines))
-      this.p[id] = {undo_count: (m.undo_history || []).length, rule_on: true, snoozed_until: null, held: false, approval_msg: null, pending_pause_msg: null, paused_msg: null, last_verdict: "—", keep_posted: false};
-    this.event("Simulation started. CostGuard's cloud permission: pause, restart, read metrics, read logs. There is no delete.", "info");
-  }
-  get now() { return this.cloud.clock; }
-  m(id) { return this.cloud.machines[id]; }
-  event(text, level = "info", extra = {}) { this.pending.push({time: this.now, text, level, ...extra}); }
-  post(kind, mid = null, f = {}) { const msg = {id: ++this.seq, time: this.now, author: BOT, kind, mid, title: "", lines: [], note: "", rollback: [], buttons: [], resolved: null, ...f}; this.messages.push(msg); return msg; }
-  msg(id) { return this.messages.find(x => x.id === id); }
-  resolve(id, text) { const x = this.msg(id); if (x && !x.resolved) { x.resolved = text; x.buttons = []; } }
-  eod() { return dayStart(this.now) + 23 * 60 + 59; }
-  dropSched(kind, id) { this.scheduled = this.scheduled.filter(e => !(e.kind === kind && e.mid === id)); }
-
-  execute(action, id, actor) {
-    const [ok, why] = checkExecution(action, this.m(id), actor);
-    if (!ok) { this.blocked.push({time: this.now, mid: id, why}); this.event(`POLICY BLOCKED ${action}(${id}) by ${actor}: ${why}`, "block"); return false; }
-    const done = this.cloud[action](id, actor);
-    this.event(`cloud.${action}(${id}) by ${actor}: ${done ? "done" : "no change"}`, "act"); return done;
-  }
-  watch(id) {
-    const mt = this.cloud.getMetrics(id); let low = 0;
-    for (let i = mt.gpu.length - 1; i >= 0; i--) { const sig = mt.gpu[i] !== null ? mt.gpu[i] : mt.cpu[i]; if (sig < C.IDLE_GPU_PCT && mt.net[i] < C.IDLE_MAX_NET_MBPS) low++; else break; }
-    const g = low ? mt.gpu.slice(mt.gpu.length - low) : [], flagged = low >= C.IDLE_MIN_HOURS, last = mt.gpu.length - 1;
-    let ev;
-    if (mt.gpu[last] === null) ev = `CPU at ${mt.cpu[last]}%, network ${pyFloat(mt.net[last])} MB/s`;
-    else if (low) { const lo = Math.min(...g), hi = Math.max(...g); ev = lo === hi ? `GPU at ${lo}% for ${low} hours` : `GPU at ${lo}-${hi}% for ${low} hours`; }
-    else ev = `GPU at ${mt.gpu[last]}%`;
-    if (mt.last_checkpoint !== null) ev += `, last save ${fmtAgo(this.now - mt.last_checkpoint)}`;
-    if (low && mt.net[last] < C.IDLE_MAX_NET_MBPS) ev += ", no network traffic";
-    return {mid: id, low_hours: low, flagged, evidence: ev};
-  }
-  skipReason(id) {
-    const p = this.p[id], m = this.m(id);
-    if (m.state === "paused") return "already paused";
-    if (p.held) return "held for human review (policy block)";
-    if (!p.rule_on) return `auto-pause rule switched off after ${p.undo_count} undos`;
-    if (p.snoozed_until !== null && this.now < p.snoozed_until) return `owner said keep; snoozed until ${fmtT(p.snoozed_until)}`;
-    if (p.approval_msg && !this.msg(p.approval_msg).resolved) return "approval request already pending";
-    if (p.pending_pause_msg && !this.msg(p.pending_pause_msg).resolved) return "pause already scheduled";
-    return null;
-  }
-  judgePrompt(id) {
-    const m = this.m(id), mt = this.cloud.getMetrics(id), logs = this.cloud.getLogs(id);
-    const rows = mt.times.map((t, i) => `${fmtStamp(t).slice(11)}  gpu=${mt.gpu[i] === null ? "n/a" : mt.gpu[i] + "%"}  cpu=${mt.cpu[i]}%  net=${pyFloat(mt.net[i])}  disk=${mt.disk[i]}`).join("\n");
-    const ck = mt.last_checkpoint;
-    const commits = mt.commits.map(c => `- ${fmtStamp(c.time)} ${c.author}: ${c.msg}`).join("\n") || "- none";
-    const user = fmt(P.JUDGE_USER, {id, name: m.name, hardware: m.hardware, env: m.env, owner: m.owner, price_hr: pyFloat(m.price_hr), tags: pyDict(m.tags),
-      now: fmtStamp(this.now), metrics_table: rows, last_checkpoint: ck !== null ? `${fmtStamp(ck)} (${fmtAgo(this.now - ck)})` : "none recorded",
-      commits, n_logs: logs.length, logs: logs.join("\n")});
-    const inputs = logs.concat(Object.entries(m.tags).map(([k, v]) => `${k}: ${v}`), mt.commits.map(c => c.msg));
-    return [user, inputs];
-  }
-  async ai(kind, mid, system, user, mockFn) {
-    const res = await callAI(system, user, mockFn);
-    this.aiCalls.push({time: this.now, kind, mid, cost: res.cost, in: res.in, out: res.out});
-    return [res, parseJSON(res.text)];
-  }
-  async runHour(note = () => {}) {
-    const end = this.now + 60;
-    for (;;) {
-      const due = this.scheduled.filter(e => e.time <= end).sort((a, b) => a.time - b.time);
-      if (!due.length) break;
-      const e = due[0]; this.scheduled.splice(this.scheduled.indexOf(e), 1);
-      this.cloud.advanceTo(e.time); await this.fire(e);
+function timeline(){
+  const ev=[], paused={}, outcome={};
+  for(const r of RUNS){
+    const capMin=S.caps[r.id]>0?S.caps[r.id]/PRICE*60:Infinity;
+    const f=r.flag.minute;
+    const trig=f<N?{m:f,rule:r.flag.rule,detail:r.flag.detail}:null;
+    const capFirst=capMin<N&&(capMin<f);
+    if(r.story==="slow_eval"&&trig){
+      ev.push({m:r.naive_kill,run:r.id,kind:"note",title:`A fixed-threshold script would kill ${r.id} now`,body:`GPU under 30% for 15 min. That rule can't tell a validation pass from a crash, and it doesn't check checkpoints.`});
     }
-    this.cloud.advanceTo(end); this.cloud.recordHour(); this.hoursRun++;
-    const entry = {time: this.now, events: this.pending, watch: [], judge: []}; this.pending = [];
-    note("1. WATCH: plain rules on all machines");
-    const flagged = [];
-    for (const id of Object.keys(this.cloud.machines)) {
-      const w = this.watch(id); w.skip = w.flagged ? this.skipReason(id) : null; entry.watch.push(w);
-      if (w.flagged && !w.skip) flagged.push(w);
-    }
-    for (const w of flagged) {
-      const id = w.mid, m = this.m(id);
-      note(`2. JUDGE: asking the AI about ${id}`);
-      const [user, inputs] = this.judgePrompt(id);
-      const [res, parsed] = await this.ai("judge", id, P.JUDGE_SYSTEM, user, () => mock.judge(m, this.cloud.getLogs(id)));
-      note(`3. ACT: policy check for ${id}`);
-      const dec = decide(m, parsed, res.error, res.text, this.cloud.machines, inputs);
-      entry.judge.push({mid: id, system: P.JUDGE_SYSTEM, user, raw: res.text, in: res.in, out: res.out, cost: res.cost, latency: res.latency, model: res.model, error: res.error, policy: dec});
-      this.act(m, w, parsed || {}, dec);
-    }
-    entry.events = entry.events.concat(this.pending); this.pending = [];
-    this.trace.push(entry);
-  }
-  act(m, w, ai, dec) {
-    const id = m.id, p = this.p[id], price = m.price_hr, reason = String(ai.reason || "").trim(), conf = Number(ai.confidence) || 0;
-    const cost = `costs ${money(price)} an hour (${money(price * 24)} a day)`, o = dec.outcome, pct = Math.round(conf * 100) + "%";
-    p.last_verdict = {pause_after_warning: "idle: pause", keep: "busy: keep", approval_request: "idle: approval", ask_owner: "unsure: ask", blocked: "blocked"}[o];
-    if (o === "pause_after_warning") {
-      const at = this.now + C.PAUSE_GRACE_MINUTES;
-      const msg = this.post("warn", id, {to: m.owner, title: `${id} looks idle`, lines: [["Evidence", w.evidence], ["Cost", cost], ["Action", `I'll pause it at **${fmtT(at)}** unless you say keep. Disk and checkpoints are kept.`]],
-        note: `AI (${pct} sure): ${reason}`, buttons: [["keep", "Keep it", ""], ["pause_now", "Pause now", "primary"], ["not_mine", "Not mine", "ghost"]]});
-      p.pending_pause_msg = msg.id; this.scheduled.push({time: at, kind: "pause", mid: id, msg_id: msg.id});
-      this.event(`${id}: warned @${m.owner}; pause scheduled for ${fmtT(at)}`, "act");
-    } else if (o === "keep") {
-      if (!p.keep_posted) { this.post("keep", id, {title: `${id} looked idle, but it's busy`, lines: [["Evidence", w.evidence + " (that's what tripped the rule)"], ["Cost", cost], ["Action", "**Keeping it running.** No action needed."]], note: `AI (${pct} sure): ${reason}`}); p.keep_posted = true; }
-      this.event(`${id}: AI says busy, keep running`, "pass");
-    } else if (o === "approval_request") {
-      const [hh, mm] = C.PROD_RESTART_BEFORE.split(":").map(Number);
-      let until = dayStart(this.now) + hh * 60 + mm; if (until <= this.now) until += 1440;
-      const hrs = (until - this.now) / 60;
-      const msg = this.post("approval", id, {to: C.APPROVER, title: `Approval needed: ${id} is production`, until,
-        lines: [["Evidence", w.evidence], ["Cost", cost], ["Action", `I **can't pause production** myself. Approve pausing it until **${fmtT(until)}**? Saves about ${money(price * hrs)}.`]],
-        note: `AI (${pct} sure): ${reason}`,
-        rollback: [`Restart ${id} automatically at ${fmtT(until)}, before morning traffic.`, `Anyone can click **Roll back** to call restart(${id}) immediately (warm-up ~4 min).`, "After restart: check /healthz, confirm it re-registers with the load balancer.", "Nothing is deleted; disks, config and model weights stay as they are."],
-        buttons: [["approve", "Approve", "primary"], ["reject", "Reject", ""]]});
-      p.approval_msg = msg.id; this.event(`${id}: production, approval request sent to @${C.APPROVER}`, "warn");
-    } else if (o === "ask_owner") {
-      this.post("ask", id, {to: m.owner, title: `Is ${id} still in use?`, lines: [["Evidence", w.evidence], ["Cost", cost], ["Action", "I'm **not sure** it's idle, so I won't touch it. Want me to pause it?"]],
-        note: `AI (${pct} sure): ${reason || "no usable answer"}`, buttons: [["pause_now", "Pause now", "primary"], ["keep", "Keep it", ""], ["not_mine", "Not mine", "ghost"]]});
-      p.snoozed_until = this.now + 180; this.event(`${id}: unsure, asked @${m.owner}`, "warn");
-    } else {
-      p.held = true; this.blocked.push({time: this.now, mid: id, why: dec.blocked_reason});
-      const lines = [["AI asked to", `${ai.action || "?"} **${ai.machine_id || "?"}**` + (reason ? `: “${reason}”` : "")],
-        ["Blocked because", dec.checks.filter(c => c.ok === false).map(c => c.msg).join("; ")]];
-      const hits = scanInjection(this.judgePrompt(id)[1]);
-      if (hits.length) lines.push(["Source", `text inside ${id}'s logs/tags: \`${hits[0].slice(0, 110)}\``]);
-      lines.push(["Action", `**Nothing was changed.** ${id} is held for human review. @${m.owner}, please check where that text came from.`]);
-      this.post("blocked", id, {to: m.owner, title: "Policy blocked an action", lines, buttons: [["release", "Reviewed, release hold", "ghost"]]});
-      this.event(`${id}: POLICY BLOCKED (${dec.blocked_reason})`, "block");
-    }
-  }
-  async fire(e) {
-    const id = e.mid;
-    if (e.kind === "pause") {
-      const warn = this.msg(e.msg_id); if (!warn || warn.resolved) return;
-      if (this.execute("pause", id, BOT)) { this.resolve(e.msg_id, `Paused at ${fmtT(this.now)}`); this.postPaused(id, BOT); }
-    } else if (e.kind === "owner_reply") await this.reply(e.author, e.text);
-    else if (e.kind === "restart") {
-      this.p[id].snoozed_until = this.eod();
-      if (this.m(id).state === "paused" && this.execute("restart", id, BOT)) {
-        if (this.p[id].paused_msg) this.resolve(this.p[id].paused_msg, `Restarted at ${fmtT(this.now)}`);
-        this.post("restarted", id, {title: `Restarted ✓ ${id}`, lines: [["Action", `Restarted at ${fmtT(this.now)} as planned, ahead of morning traffic. Saved ${money(this.cloud.savedUsd(id))} overnight.`]]});
+    const steps=(m,rule,detail)=>{
+      ev.push({m,run:r.id,kind:"flag",rule,title:rule==="budget"?`Budget cap reached on ${r.id}`:`Rule fired on ${r.id}`,body:detail});
+      let ans=null,pr=null;
+      if(rule!=="budget"){pr=promptFor(r,m,detail);ans=aiAnswer(r,m,rule);
+        const out=JSON.stringify(ans,null,1);const ti=tokens(pr.sys+pr.user),to=tokens(out);
+        ev.push({m,run:r.id,kind:"ai",title:`AI judge: ${ans.verdict.toUpperCase()} → ${ans.action}`,ans,pr,out,ti,to,cost:(ti*AI_PRICE.in+to*AI_PRICE.out)/1e6});
+        if(ans.action==="keep"){
+          ev.push({m:m,run:r.id,kind:"policy",title:"Policy: keep running, keep watching",checks:[["AI verdict healthy, no action requested",true],["No pause without a failure verdict",true]],outcome:"keep"});
+          outcome[r.id]={type:"kept",m};return;}
       }
+      const v=verify(r,m+1);
+      ev.push({m:m+1,run:r.id,kind:"verify",title:v.chosen?`Checkpoint ${v.chosen.file} verified`:`No healthy checkpoint found`,v});
+      const locked=S.locks[r.id];
+      const checks=[
+        ["Action is on the allowlist (stop instance + snapshot)",true],
+        [rule==="budget"?"Budget cap you set was reached":`AI confidence ${ans.confidence} ≥ ${RU.min_confidence}`,true],
+        ["A healthy checkpoint exists to resume from",!!v.chosen],
+        ["No “do not kill” lock on this run",!locked]];
+      const ok=checks.every(c=>c[1]);
+      ev.push({m:m+2,run:r.id,kind:"policy",title:ok?"Policy: allowed → pause":"Policy: BLOCKED → keep running",checks,outcome:ok?"pause":"blocked",blocked:!ok});
+      if(ok){paused[r.id]=m+2;ev.push({m:m+2,run:r.id,kind:"act",title:`Snapshot taken, ${r.id} stopped`,body:`Billing stopped at ${hm(m+2)}. Nothing restarts until you tap Approve. Message queued for 7:14 AM (quiet hours, no 2 AM page).`});
+        outcome[r.id]={type:"paused",m:m+2,rule,ans,v,flagM:m};}
+      else outcome[r.id]={type:"locked",m:m+2,rule,ans,v,flagM:m};
+    };
+    if(capFirst) steps(Math.ceil(capMin),"budget",`Spend reached your ${usd(S.caps[r.id])} cap.`);
+    else if(trig){
+      steps(trig.m,trig.rule,trig.detail);
+      if(!paused[r.id]&&capMin<N&&capMin>trig.m+2&&!S.locks[r.id]) steps(Math.ceil(capMin),"budget",`Spend reached your ${usd(S.caps[r.id])} cap.`);
     }
   }
-  postPaused(id, by) {
-    const m = this.m(id), who = by === BOT ? "I paused" : `Paused by @${by}.`;
-    const msg = this.post("paused", id, {title: `Paused ✓ ${id}`, lines: [["Action", `${who} ${id} at ${fmtT(this.now)}. Saving ${money(m.price_hr)} an hour. Disk and checkpoints are kept. Reply **undo** to restart it.`]], buttons: [["undo", "Undo", ""]]});
-    this.p[id].paused_msg = msg.id;
-    if (m.owner_script && by === BOT) this.scheduled.push({time: this.now + m.owner_script.after_pause_min, kind: "owner_reply", author: m.owner, text: m.owner_script.text});
-  }
-  async button(msgId, action) {
-    const x = this.msg(msgId); if (!x || (x.resolved && !["undo", "rollback", "rule_on"].includes(action))) return;
-    const id = x.mid, actor = x.to || this.m(id).owner;
-    if (action === "approve") {
-      this.resolve(msgId, `Approved by @${actor} at ${fmtT(this.now)}`);
-      if (this.execute("pause", id, actor)) {
-        this.scheduled.push({time: x.until, kind: "restart", mid: id});
-        const pm = this.post("paused", id, {title: `Paused ✓ ${id} (approved by @${actor})`, lines: [["Action", `Paused at ${fmtT(this.now)}. I'll restart it at ${fmtT(x.until)}. Saving ${money(this.m(id).price_hr)} an hour.`]], buttons: [["rollback", "Roll back now", ""]]});
-        this.p[id].paused_msg = pm.id; this.p[id].snoozed_until = this.eod();
-      }
-      this.event(`${id}: approved by @${actor}`, "act");
-    } else if (action === "reject") {
-      this.resolve(msgId, `Rejected by @${actor}`); this.p[id].snoozed_until = this.eod();
-      this.post("info", id, {title: `OK, leaving ${id} running`, lines: [["Action", "I won't ask about it again today."]]});
-      this.event(`${id}: approval rejected by @${actor}`, "info");
-    } else if (action === "rollback") this.restartM(id, actor, false);
-    else if (action === "release") { this.resolve(msgId, `Reviewed by @${actor}; hold released`); this.p[id].held = false; this.p[id].snoozed_until = this.eod(); }
-    else if (action === "rule_on") { this.p[id].rule_on = true; this.p[id].undo_count = 0; this.resolve(msgId, `Rule switched back on by @${actor}`); this.event(`${id}: auto-pause rule switched back on`, "info"); }
-    else await this.reply(actor, {keep: "keep it", pause_now: "pause now", not_mine: "not mine", undo: "undo"}[action], id, true);
-  }
-  async reply(author, text, machine = null, viaButton = false) {
-    text = text.trim(); if (!text) return;
-    this.post("human", machine, {author, text, via_button: viaButton});
-    const owned = Object.keys(this.cloud.machines).filter(id => this.m(id).owner === author);
-    const named = Object.keys(this.cloud.machines).find(id => text.includes(id));
-    let ctx = machine || named || ([...this.messages].reverse().find(x => x.author === BOT && owned.includes(x.mid)) || {}).mid || null;
-    const PATS = [["not_mine", /\bnot (mine|my)\b|\bisn'?t mine\b|\bwrong (person|owner)\b/i], ["undo", /\bundo\b|\brestart\b|\bunpause\b|\bbring (it )?back\b|\bturn (it )?back on\b|\bresume\b/i],
-      ["keep", /\bkeep\b|\bdon'?t (pause|touch|stop)\b|\bleave it\b|\bstill (using|need)\b|\bneed it\b|\bin use\b/i], ["pause_now", /\bpause( it)?( now)?\b|\bgo ahead\b|\bshut (it )?down\b|\bstop it\b/i]];
-    let intent = (PATS.find(([, re]) => re.test(text)) || [null])[0];
-    if (intent === null) {
-      const user = fmt(P.INTERPRET_USER, {owned: owned.join(", ") || "none", context_machine: ctx || "none", text});
-      const [res, parsed] = await this.ai("interpret", ctx, P.INTERPRET_SYSTEM, user, () => mock.interpret(text, ctx));
-      const pj = parsed || {};
-      intent = ["undo", "keep", "pause_now", "not_mine"].includes(pj.intent) ? pj.intent : "unclear";
-      if (pj.machine_id && this.cloud.machines[pj.machine_id]) ctx = pj.machine_id;
-      this.event(`Reply from @${author} interpreted by AI as '${intent}'`, "info", {ai: {system: P.INTERPRET_SYSTEM, user, raw: res.text, in: res.in, out: res.out, cost: res.cost}});
-    } else this.event(`Reply from @${author} matched keyword rule: '${intent}'` + (ctx ? ` on ${ctx}` : ""), "info");
-    if (intent === "unclear" || !ctx) { this.post("info", ctx, {title: "Sorry, I didn't catch that", lines: [["Try", "**keep**, **undo**, **pause now** or **not mine** (you can name the machine)."]]}); return; }
-    const m = this.m(ctx);
-    if (m.owner !== author) { this.post("info", ctx, {title: `Only @${m.owner} can change ${ctx} from chat`, lines: [["Action", "No change made."]]}); this.event(`Reply from @${author} ignored: not the owner of ${ctx}`, "warn"); return; }
-    const p = this.p[ctx], pending = p.pending_pause_msg && !this.msg(p.pending_pause_msg).resolved ? p.pending_pause_msg : null;
-    if ((intent === "undo" || intent === "keep") && m.state === "paused") this.restartM(ctx, author, m.paused_by === BOT);
-    else if (intent === "undo" || intent === "keep") {
-      for (const x of [pending, p.approval_msg]) if (x) this.resolve(x, `Kept by @${author}`);
-      this.dropSched("pause", ctx); p.snoozed_until = this.eod(); p.last_verdict = "owner: keep";
-      this.post("info", ctx, {title: `OK, keeping ${ctx} running`, lines: [["Action", "I won't touch it again today."]]});
-    } else if (intent === "pause_now") {
-      if (m.env === "production") { this.post("info", ctx, {title: "Production needs the Approve button", lines: [["Action", `I can't pause ${ctx} from chat. @${C.APPROVER} has to approve it.`]]}); return; }
-      if (pending) this.resolve(pending, `Paused early by @${author}`);
-      this.dropSched("pause", ctx);
-      if (this.execute("pause", ctx, author)) this.postPaused(ctx, author);
-    } else if (intent === "not_mine") {
-      if (pending) this.resolve(pending, `@${author}: not mine`);
-      this.dropSched("pause", ctx); p.snoozed_until = this.eod();
-      this.post("info", ctx, {title: "Thanks, I'll find the real owner", lines: [["Action", `I won't pause a machine with an unclear owner. I've asked #infra-leads who owns ${ctx}.`]]});
-    }
-  }
-  restartM(id, actor, countsAsUndo) {
-    const pausedAt = this.m(id).paused_at;
-    if (!this.execute("restart", id, actor)) return;
-    const p = this.p[id];
-    if (p.paused_msg) this.resolve(p.paused_msg, `Undone by @${actor} at ${fmtT(this.now)}`);
-    this.dropSched("restart", id); p.snoozed_until = this.eod(); p.last_verdict = "undone";
-    this.post("restarted", id, {title: `Restarted ✓ ${id}`, lines: [["Action", `Back up at ${fmtT(this.now)}. I won't pause it again today.`]]});
-    if (countsAsUndo) {
-      p.undo_count++; const m = this.m(id); (m.undo_history = m.undo_history || []).push(`${fmtDay(this.now)}: paused at ${fmtT(pausedAt)}, undone by ${actor} at ${fmtT(this.now)}`);
-      this.event(`${id}: undo #${p.undo_count}`, "warn");
-      if (p.undo_count >= C.UNDO_LIMIT && p.rule_on) {
-        p.rule_on = false; p.last_verdict = "rule off";
-        this.post("rule_off", id, {title: `I've switched off auto-pause for ${id}`, lines: [["Evidence", `My pause has been undone ${p.undo_count} times:`], ["History", m.undo_history.slice(-C.UNDO_LIMIT).join("; ")],
-          ["Action", `I'll keep reporting ${id}'s cost in the weekly summary, but I won't pause it again unless you turn the rule back on.`]], buttons: [["rule_on", "Turn rule back on", "ghost"]]});
-        this.event(`${id}: rule switched itself off after ${p.undo_count} undos`, "block");
-      }
-    }
-  }
-  totals() {
-    const ids = Object.keys(this.cloud.machines), ai = this.aiCalls.reduce((a, c) => a + c.cost, 0);
-    return {saved: ids.reduce((a, id) => a + this.cloud.savedUsd(id), 0), paused: ids.filter(id => this.m(id).state === "paused").length,
-      approvals: this.messages.filter(x => x.kind === "approval" && !x.resolved).length, blocked: this.blocked.length, ai, calls: this.aiCalls.length,
-      rate: this.hoursRun ? ai / this.hoursRun * C.HOURS_PER_MONTH : 0, burn: ids.filter(id => this.m(id).state === "running").reduce((a, id) => a + this.m(id).price_hr, 0)};
+  ev.sort((a,b)=>a.m-b.m||(["note","flag","ai","verify","policy","act"].indexOf(a.kind)-["note","flag","ai","verify","policy","act"].indexOf(b.kind)));
+  return {ev,paused,outcome};
+}
+let TL=timeline();
+
+/* ---------------- charts ---------------- */
+function chart(el,{pts,ymin,ymax,cut,ref,refLabel,shade,markers=[],fmt=v=>v,unit=""}){
+  const W=300,H=96,l=30,r=6,t=6,b=16, X=m=>l+(W-l-r)*m/N, Y=v=>t+(H-t-b)*(1-(v-ymin)/(ymax-ymin));
+  let d="",pen=false,pm=-1;
+  for(const [m,v] of pts){ if(m>cut) break; if(v==null||!isFinite(v)){pen=false;continue} if(m-pm>3)pen=false; pm=m; const y=Y(Math.max(ymin,Math.min(ymax,v))); d+=(pen?"L":"M")+X(m).toFixed(1)+" "+y.toFixed(1); pen=true;}
+  const ticks=[ymin,(ymin+ymax)/2,ymax];
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(el.dataset.label)}">`;
+  for(const v of ticks) s+=`<line x1="${l}" x2="${W-r}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--grid)"/><text x="${l-4}" y="${Y(v)+3}" font-size="9" text-anchor="end" fill="var(--muted)">${fmt(v)}</text>`;
+  for(const hh of [0,120,240,360,480]) s+=`<text x="${X(hh+46)}" y="${H-3}" font-size="9" text-anchor="middle" fill="var(--muted)">${hm(hh+46).replace(":00","").replace(" ","")}</text>`;
+  if(shade&&shade[0]<=cut) s+=`<rect x="${X(shade[0])}" y="${t}" width="${Math.max(1,X(Math.min(cut,shade[1]))-X(shade[0]))}" height="${H-t-b}" fill="var(--shade)"/>`;
+  if(ref!=null) s+=`<line x1="${l}" x2="${W-r}" y1="${Y(ref)}" y2="${Y(ref)}" stroke="var(--muted)" stroke-dasharray="4 3"/><text x="${W-r}" y="${Y(ref)-3}" font-size="9" text-anchor="end" fill="var(--muted)">${refLabel}</text>`;
+  s+=`<path d="${d}" fill="none" stroke="var(--plot)" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>`;
+  markers.filter(mk=>mk.m<=cut).forEach((mk,i)=>{s+=`<line x1="${X(mk.m)}" x2="${X(mk.m)}" y1="${t}" y2="${H-b}" stroke="${mk.c}" stroke-width="1.5"/><text x="${X(mk.m)+3}" y="${t+9+i*10}" font-size="9" fill="${mk.c}" font-weight="700">${mk.label}</text>`});
+  s+=`<line class="xh" x1="0" x2="0" y1="${t}" y2="${H-b}" stroke="var(--muted)" visibility="hidden"/><circle class="dot" r="3.5" fill="var(--plot)" stroke="var(--panel)" stroke-width="2" visibility="hidden"/><rect x="${l}" y="0" width="${W-l-r}" height="${H}" fill="transparent" class="hit"/></svg><div class="tip"></div>`;
+  el.querySelector(".plot").innerHTML=s;
+  const svg=el.querySelector("svg"),tip=el.querySelector(".tip"),xh=svg.querySelector(".xh"),dot=svg.querySelector(".dot");
+  const vis=pts.filter(p=>p[0]<=cut&&p[1]!=null);
+  svg.querySelector(".hit").onmousemove=e=>{
+    const bb=svg.getBoundingClientRect(),mx=(e.clientX-bb.left)/bb.width*W, m=(mx-l)/(W-l-r)*N;
+    let best=null;for(const p of vis){if(!best||Math.abs(p[0]-m)<Math.abs(best[0]-m))best=p}
+    if(!best||Math.abs(best[0]-m)>20){tip.style.display="none";xh.setAttribute("visibility","hidden");dot.setAttribute("visibility","hidden");return}
+    xh.setAttribute("x1",X(best[0]));xh.setAttribute("x2",X(best[0]));xh.setAttribute("visibility","visible");
+    dot.setAttribute("cx",X(best[0]));dot.setAttribute("cy",Y(Math.max(ymin,Math.min(ymax,best[1]))));dot.setAttribute("visibility","visible");
+    tip.style.display="block";tip.style.left=(X(best[0])/W*100)+"%";tip.style.top=(Y(best[1])/H*100)+"%";
+    tip.textContent=`${hm(best[0])} · ${fmt(best[1])}${unit}`;
+  };
+  svg.querySelector(".hit").onmouseleave=()=>{tip.style.display="none";xh.setAttribute("visibility","hidden");dot.setAttribute("visibility","hidden")};
+}
+
+/* ---------------- run cards ---------------- */
+function status(r,t){
+  const p=TL.paused[r.id];
+  if(p!=null&&t>=p) return ["Paused · snapshot saved","good"];
+  const o=TL.outcome[r.id];
+  if(o&&o.type==="locked"&&t>=o.m) return ["Locked · still billing","crit"];
+  if(r.story==="collapse"&&t>=r.flag.onset) return ["Not learning","crit"];
+  if(r.story==="slow_eval"&&t>=r.eval.start&&t<r.eval.end) return ["Evaluating","warn"];
+  if(r.story==="finished"&&t>=r.finished_at) return ["Finished · GPUs idle","crit"];
+  return ["Training","idle"];
+}
+function logLines(r,t){
+  const cut=Math.min(t,TL.paused[r.id]??Infinity), out=[];
+  for(const p of r.loss) if(p[0]<=cut) out.push([p[0],`[train] step ${Math.round(p[0]*r.steps_per_min/100)*100} loss=${p[1]} grad_norm=${p[3]} lr=${p[4]}`,p[2]>=CH-RU.chance_band?"w":""]);
+  for(const c of r.checkpoints) if(c.minute<=cut) out.push([c.minute,`[ckpt] saved ${c.file} (${Math.round(c.bytes/1024)} KB)`,"c"]);
+  for(const v of (r.val||[])) if(v[0]<=cut) out.push([v[0],`[eval] val_loss=${v[1]}`,"e"]);
+  if(r.eval) for(const p of r.eval.progress) if(p[0]<=cut&&(p[1]%50===0||p[1]===p[2])) out.push([p[0],`[eval] full validation ${p[1]}/${p[2]} running_loss=${p[3]}`,"e"]);
+  if(r.story==="finished"&&cut>=r.finished_at) out.push([r.finished_at+0.01,`[train] training complete · train.py exited (code 0)`,"c"]);
+  if(TL.paused[r.id]!=null&&t>=TL.paused[r.id]) out.push([TL.paused[r.id],`[costguard] snapshot taken · instance stopped`,"c"]);
+  out.sort((a,b)=>a[0]-b[0]);
+  return out.slice(-4).map(o=>`<div class="${o[2]}">${hm(o[0])}  ${esc(o[1])}</div>`).join("")||`<div class="muted">waiting for first log line…</div>`;
+}
+function spend(r,t){const p=TL.paused[r.id];return PRICE*Math.min(t,p??t)/60}
+function buildRuns(){
+  $("#runs").innerHTML=RUNS.map(r=>`<article class="panel run" id="run-${r.id}">
+    <header><div><h3>${r.id} <span class="muted" style="font-weight:400">· ${esc(r.title)}</span></h3><div class="mono muted">$ ${esc(r.cmd)}</div></div>
+    <div style="text-align:right"><span class="chip" data-st></span><div class="mono" data-spend></div></div></header>
+    <div class="charts">
+      <div class="chart" data-k="loss" data-label="Training loss for ${r.id}"><div class="ct">Training loss, smoothed <span class="legend-inline"><i></i>chance level</span></div><div class="plot"></div></div>
+      <div class="chart" data-k="gpu" data-label="GPU busy percent for ${r.id}"><div class="ct">GPU busy % (8 GPUs, mean)</div><div class="plot"></div></div>
+    </div>
+    <div class="logs" data-logs aria-live="off"></div>
+    <div class="src">Loss + checkpoints: real run (${r.steps_per_min} steps per simulated minute). GPU: real nvidia-smi from Philly job …${r.philly.jobid.slice(-5)} (${r.philly.status}, ${r.philly.start.slice(0,10)}).</div>
+  </article>`).join("");
+}
+function renderRuns(){
+  for(const r of RUNS){
+    const el=$("#run-"+r.id), t=S.t, p=TL.paused[r.id], cut=Math.min(t,p??Infinity);
+    const [st,cls]=status(r,t); const chip=el.querySelector("[data-st]"); chip.className="chip "+cls; chip.textContent=(cls==="crit"?"▲ ":cls==="good"?"✓ ":cls==="warn"?"◆ ":"● ")+st;
+    el.querySelector("[data-spend]").textContent=`spent ${usd(spend(r,t))}`;
+    const mk=[]; const o=TL.outcome[r.id];
+    if(o&&o.flagM!=null) mk.push({m:o.flagM,label:"flag",c:"var(--warn)"});
+    if(p!=null) mk.push({m:p,label:"pause",c:"var(--good)"});
+    if(r.story==="slow_eval") mk.push({m:r.flag.minute,label:"flag→keep",c:"var(--warn)"});
+    const shade=r.story==="collapse"?[r.flag.onset,N]:r.story==="slow_eval"?[r.eval.start,r.eval.end]:[r.finished_at,N];
+    chart(el.querySelector('[data-k="loss"]'),{pts:r.loss.map(x=>[x[0],x[2]]),ymin:1.4,ymax:3.8,cut,ref:CH,refLabel:`chance ${CH}`,markers:mk,shade,fmt:v=>(+v).toFixed(2)});
+    chart(el.querySelector('[data-k="gpu"]'),{pts:r.gpu.map((v,i)=>[i,v]),ymin:0,ymax:100,cut:p!=null&&t>=p?p:t,markers:mk,shade,fmt:v=>Math.round(v),unit:"%"});
+    el.querySelector("[data-logs]").innerHTML=logLines(r,t);
   }
 }
 
-// ---------------------------------------------------------------- rendering
-let W = new World(), busy = false, traceTab = null;
-const $ = id => document.getElementById(id);
-
-function sparkline(vals) {
-  const w = 84, h = 22, n = vals.length, pts = vals.map((v, i) => `${(i / (n - 1) * (w - 4) + 2).toFixed(1)},${(h - 2 - (v || 0) / 100 * (h - 4)).toFixed(1)}`);
-  const last = pts[n - 1].split(",");
-  return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="GPU last 12 hours"><line x1="2" y1="${h - 2}" x2="${w - 2}" y2="${h - 2}" stroke="var(--line)" stroke-width="1"/><polyline points="${pts.join(" ")}" fill="none" stroke="var(--spark)" stroke-width="1.6" stroke-linejoin="round"/><circle cx="${last[0]}" cy="${last[1]}" r="2.2" fill="var(--spark)"/></svg>`;
-}
-function renderTop() {
-  const T = W.totals();
-  $("clock").textContent = `${fmtDay(W.now)} · ${fmtT(W.now)}`;
-  $("kpis").innerHTML = [
-    ["Money saved so far", money(T.saved), "hours paused × hourly price", T.saved > 0 ? "good" : ""],
-    ["Machines paused", `${T.paused} of 8`, `running fleet costs ${money(T.burn)}/hr`, ""],
-    ["Approvals pending", T.approvals, "production needs a person", T.approvals ? "attn" : ""],
-    ["Blocked actions", T.blocked, "refused by the policy layer", T.blocked ? "hot" : ""],
-    ["AI cost this month", "$" + T.ai.toFixed(4), W.hoursRun ? `${T.calls} calls · ≈ $${T.rate.toFixed(2)}/mo at this rate` : "AI only sees flagged machines", ""],
-  ].map(([l, v, s, c]) => `<div class="kpi ${c}"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join("");
-  const adv = $("advance"); adv.disabled = busy; adv.textContent = `▶ Advance 1 hour → ${fmtT(W.now + 60)}`;
-  const nxt = [...W.scheduled].sort((a, b) => a.time - b.time).slice(0, 4).map(e => `${fmtT(e.time)} ${e.kind === "pause" ? "pause " + e.mid : e.kind === "restart" ? "restart " + e.mid : "@" + e.author + " replies"}`);
-  $("upnext").textContent = nxt.length ? "Coming up: " + nxt.join(" · ") : (!W.hoursRun ? "The agent runs once every simulated hour. Advance the clock to run it." : "");
-}
-function renderFeed() {
-  const feed = $("feed"), atBottom = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 40;
-  if (!W.messages.length) { feed.innerHTML = `<div class="empty">No messages yet.<br>Click <b>▶ Advance 1 hour</b> to let CostGuard look at the cloud.</div>`; return; }
-  let html = "", lastBlock = null;
-  for (const x of W.messages) {
-    const block = Math.floor((x.time - 0) / 60);
-    if (block !== lastBlock) { html += `<div class="divider">${fmtT(x.time)}</div>`; lastBlock = block; }
-    if (x.author !== BOT) {
-      html += `<div class="msg"><div class="av" style="background:${PEOPLE[x.author] || "#555"}">${esc(x.author[0].toUpperCase())}</div><div class="mb"><div class="mh"><b>@${esc(x.author)}</b><span class="t">${fmtT(x.time)}</span>${x.via_button ? ' <span class="via">(button)</span>' : ""}</div><div>${md(x.text)}</div></div></div>`;
-      continue;
-    }
-    const lines = x.lines.map(([k, v]) => `<div class="ln"><span class="lb">${esc(k)}</span><span>${md(v)}</span></div>`).join("");
-    const note = x.note ? `<div class="note">${md(x.note)}</div>` : "";
-    const roll = x.rollback.length ? `<div class="roll"><b>Rollback plan</b><ol>${x.rollback.map(r => `<li>${md(r)}</li>`).join("")}</ol></div>` : "";
-    const res = x.resolved ? `<div class="res">✓ ${esc(x.resolved)}</div>` : "";
-    const acts = x.buttons.length ? `<div class="acts">${x.buttons.map(([a, l, k]) => `<button type="button" class="btn sm ${k}" data-msg="${x.id}" data-act="${a}">${esc(l)}</button>`).join("")}</div>` : "";
-    html += `<div class="msg k-${x.kind}"><div class="av bot" aria-hidden="true">CG</div><div class="mb"><div class="mh"><b>CostGuard</b><span class="tag">APP</span><span class="t">${fmtT(x.time)}</span></div><div class="mt">${x.to ? "@" + esc(x.to) + " " : ""}${md(x.title)}</div>${lines}${note}${roll}${res}${acts}</div></div>`;
+/* ---------------- trace ---------------- */
+function evHTML(e){
+  let body="";
+  if(e.kind==="ai") body=`<p>${esc(e.ans.reason)}</p>${e.ans.fix?`<p class="mono" style="margin-top:4px">fix: ${esc(e.ans.fix.flag)} ${esc(e.ans.fix.from)} → ${esc(e.ans.fix.to)}</p>`:""}
+    <details><summary>Exactly what the AI saw (signals only) · ${e.ti} in / ${e.to} out tokens · ${usd(e.cost)}</summary><pre>${esc(e.pr.sys)}</pre><pre>${esc(e.pr.user)}</pre><pre>${esc(e.out)}</pre><p class="muted" style="font-size:11px">Offline demo: this answer was written in advance from the same numbers. Token cost at ${AI_PRICE.model} list prices ($${AI_PRICE.in}/$${AI_PRICE.out} per 1M).</p></details>`;
+  else if(e.kind==="verify"){
+    const rows=e.v.rows, shown=rows.length>5?[...rows.slice(0,3),null,...rows.slice(-1)]:rows;
+    body=`<table><thead><tr><th>checkpoint</th><th>finite</th><th>dead units</th><th>val loss</th><th></th></tr></thead><tbody>${shown.map(c=>c?`<tr><td class="mono">${c.file}</td><td>${c.finite?"yes":"NO"}</td><td class="num">${c.dead_pct==null?"n/a":c.dead_pct+"%"}</td><td class="num">${c.val_loss}</td><td class="${c.healthy?"ok":"bad"}">${c.healthy?"✓ healthy":c.dead_pct>=90?"✗ dead model":"✗ unhealthy"}</td></tr>`:`<tr><td colspan="5" class="muted">… ${rows.length-4} more unhealthy checkpoints</td></tr>`).join("")}</tbody></table>
+    <p class="muted" style="font-size:12px;margin-top:4px">${rows.length>1?`The newest ${rows.length-1} checkpoint(s) exist and contain no NaNs, so “was it saved?” would pass. They fail the health check (dead units or loss near chance), so CostGuard resumes from the last healthy one.`:`Loaded the file and re-ran a validation batch on it.`}</p>`;
   }
-  feed.innerHTML = html;
-  if (atBottom || renderFeed.force) feed.scrollTop = feed.scrollHeight;
-  renderFeed.force = false;
+  else if(e.kind==="policy") body=`<table><tbody>${e.checks.map(c=>`<tr><td>${esc(c[0])}</td><td class="${c[1]?"ok":"bad"}">${c[1]?"✓ pass":"✗ fail"}</td></tr>`).join("")}</tbody></table>`;
+  else body=`<p>${esc(e.body)}</p>`;
+  return `<div class="ev ${e.kind} ${e.blocked?"blocked":""}"><div class="t">${hm(e.m)} · ${e.run}</div><b>${esc(e.title)}</b>${body}</div>`;
 }
-function renderMachines() {
-  const rows = Object.values(W.cloud.machines).map(m => {
-    const g = m.history.gpu[m.history.gpu.length - 1], v = W.p[m.id].last_verdict;
-    const vc = v === "blocked" ? "blk" : v.startsWith("busy") ? "keep" : v.includes("pause") ? "pause" : v.includes("approval") ? "appr" : "";
-    return `<tr><td class="mono">${m.id}</td><td><span class="env ${m.env === "production" ? "prod" : "test"}">${m.env === "production" ? "prod" : "test"}</span></td>
-      <td><span class="st ${m.state === "paused" ? "pau" : "run"}">${m.state === "paused" ? "❚❚ paused" : "● running"}</span></td>
-      <td class="r">${g === null ? '<span class="small">no GPU</span>' : g + "%"}</td><td>${m.has_gpu ? sparkline(m.history.gpu) : ""}</td>
-      <td class="r">${money(m.price_hr)}</td><td class="vd ${vc}">${v === "blocked" ? "🛑 blocked" : esc(v)}</td><td class="small">@${m.owner}</td></tr>`;
-  }).join("");
-  $("machines").innerHTML = `<thead><tr><th>Machine</th><th>Env</th><th>State</th><th class="r">GPU</th><th>Last 12 h</th><th class="r">$/hr</th><th>Last verdict</th><th>Owner</th></tr></thead><tbody>${rows}</tbody>`;
+let shownEv=-1;
+function renderTrace(){
+  const vis=TL.ev.filter(e=>e.m<=S.t);
+  if(vis.length===shownEv) return; shownEv=vis.length;
+  $("#trace").innerHTML=vis.length?vis.slice().reverse().map(evHTML).join(""):`<p class="muted" style="margin-top:8px">Nothing yet. The watcher reads loss and GPU stats every minute, for free. No AI calls while rules are quiet.</p>`;
 }
-function renderReport() {
-  const T = W.totals(), ms = Object.values(W.cloud.machines);
-  const rows = ms.filter(m => m.paused_minutes > 0 || m.state === "paused").map(m => `<tr><td class="mono">${m.id}</td><td>${m.env}</td><td class="r">${(m.paused_minutes / 60).toFixed(2)}</td><td class="r">${money(m.price_hr)}</td><td class="r">${money(W.cloud.savedUsd(m.id))}</td><td>${m.state}</td></tr>`).join("");
-  const pausedNow = ms.filter(m => m.state === "paused"), rate = pausedNow.reduce((a, m) => a + m.price_hr, 0);
-  const off = Object.keys(W.p).filter(id => !W.p[id].rule_on);
-  $("report").innerHTML = `<div class="trio"><div><div class="l">Saved this week</div><div class="v">${money(T.saved)}</div></div><div><div class="l">AI cost</div><div class="v">$${T.ai.toFixed(4)}</div></div><div><div class="l">Net</div><div class="v">${money(T.saved - T.ai)}</div></div></div>` +
-    (rows ? `<div class="tbl-wrap"><table><thead><tr><th>Machine</th><th>Env</th><th class="r">Hours paused</th><th class="r">$/hr</th><th class="r">Saved</th><th>Now</th></tr></thead><tbody>${rows}</tbody></table></div>` : `<div class="small">Nothing has been paused yet.</div>`) +
-    (rate ? `<div class="small">Machines paused right now save ${money(rate)}/hour, about ${money(rate * 24 * 7)} if they stay paused for a week.</div>` : "") +
-    (off.length ? `<div class="small">Auto-pause switched off after repeated undos: ${off.join(", ")} (still costs ${money(off.reduce((a, id) => a + W.m(id).price_hr, 0))}/hour).</div>` : "");
-}
-function evHtml(evs) {
-  return evs.map(ev => `<div class="ev ${ev.level}">${fmtT(ev.time)} · ${esc(ev.text)}</div>` + (ev.ai ? `<div class="stats">AI interpret call · ${ev.ai.in} in / ${ev.ai.out} out tokens · $${ev.ai.cost.toFixed(5)}</div><div class="pr"><div><div class="cap">Prompt</div><pre>${esc(ev.ai.system + "\n\n" + ev.ai.user)}</pre></div><div><div class="cap">Raw AI output</div><pre>${esc(ev.ai.raw)}</pre></div></div>` : "")).join("");
-}
-function renderTrace() {
-  const T = W.totals();
-  $("traceSum").innerHTML = `Agent trace <span class="small" style="font-weight:400">${W.trace.length} hourly run(s) · ${T.calls} AI call(s) · $${T.ai.toFixed(4)}</span>`;
-  const tabs = [];
-  if (W.pending.length) tabs.push({key: "pending", label: `Since last run (${W.pending.length})`});
-  [...W.trace].reverse().forEach((e, i) => tabs.push({key: "h" + (W.trace.length - 1 - i), label: `${fmtT(e.time)} run${e.judge.some(j => j.policy.outcome === "blocked") ? " 🛑" : ""}`}));
-  if (!tabs.length) { $("traceBody").innerHTML = `<div class="tpane small">Nothing yet.</div>`; return; }
-  if (!tabs.some(t => t.key === traceTab)) traceTab = tabs[0].key;
-  let pane = "";
-  if (traceTab === "pending") pane = `<div class="small">Button clicks, replies and scheduled actions since the last hourly run.</div>${evHtml(W.pending)}`;
-  else {
-    const e = W.trace[Number(traceTab.slice(1))];
-    pane += e.events.length ? `<div><b>Events this hour</b>${evHtml(e.events)}</div>` : "";
-    pane += `<div><b>1 · WATCH</b> <span class="small">plain rules, no AI</span><div class="tbl-wrap"><table><thead><tr><th>Machine</th><th class="r">Low hours</th><th>Flagged</th><th>Sent to AI?</th><th>Evidence</th></tr></thead><tbody>${e.watch.map(w => `<tr><td class="mono">${w.mid}</td><td class="r">${w.low_hours}</td><td>${w.flagged ? "🚩 yes" : "no"}</td><td>${w.flagged && !w.skip ? "yes" : w.skip ? "no: " + esc(w.skip) : "no"}</td><td>${esc(w.evidence)}</td></tr>`).join("")}</tbody></table></div></div>`;
-    if (!e.judge.length) pane += `<div class="small">No machine needed an AI judgment this hour, so no AI cost.</div>`;
-    for (const j of e.judge) {
-      const head = {blocked: "🛑 BLOCKED", pause_after_warning: "✅ allowed: warn, then pause", keep: "✅ allowed: keep", approval_request: "🔐 approval request", ask_owner: "❔ ask owner"}[j.policy.outcome];
-      pane += `<div class="jb"><h4>2 · JUDGE + 3 · ACT: <span class="mono" style="font-family:var(--f-mono)">${j.mid}</span> → ${head}</h4>
-        <div class="stats"><span>${j.in} input tokens</span><span>${j.out} output tokens</span><span>$${j.cost.toFixed(5)}</span><span>${j.latency.toFixed(1)} s</span><span>model: ${j.model}</span></div>
-        <div>${j.policy.checks.map(c => `<div class="chk ${c.ok === false ? "f" : c.ok === null ? "n" : ""}"><span class="ic">${c.ok === true ? "✓" : c.ok === false ? "✗" : "!"}</span><b>${esc(c.rule)}</b>: ${esc(c.msg)}</div>`).join("")}</div>
-        <div class="pr"><div><div class="cap">Prompt sent to the model</div><pre>${esc(j.system + "\n\n---\n\n" + j.user)}</pre></div><div><div class="cap">Raw AI output</div><pre>${esc(j.raw)}</pre></div></div></div>`;
-    }
-  }
-  $("traceBody").innerHTML = `<div class="tabs" role="tablist">${tabs.map(t => `<button type="button" class="tab ${t.key === traceTab ? "on" : ""}" role="tab" aria-selected="${t.key === traceTab}" data-tab="${t.key}">${esc(t.label)}</button>`).join("")}</div><div class="tpane">${pane}</div>`;
-}
-function render() { renderTop(); renderFeed(); renderMachines(); renderReport(); renderTrace(); }
-function initWho() { $("who").innerHTML = [...new Set(Object.values(W.cloud.machines).map(m => m.owner))].sort((a, b) => (a !== "jordan") - (b !== "jordan") || a.localeCompare(b)).map(o => `<option value="${o}">@${o}</option>`).join(""); }
 
-$("advance").addEventListener("click", async () => {
-  if (busy) return; busy = true; renderTop(); renderFeed.force = true;
-  await W.runHour(t => { $("status").textContent = t; });
-  $("status").textContent = `Agent run at ${fmtT(W.now)} complete`; busy = false; traceTab = null; render();
-});
-$("reset").addEventListener("click", () => { if (busy) return; W = new World(); traceTab = null; $("status").textContent = "Demo reset to 1:15 AM"; render(); });
-$("feed").addEventListener("click", async e => {
-  const b = e.target.closest("button[data-act]"); if (!b || busy) return;
-  busy = true; b.disabled = true; await W.button(Number(b.dataset.msg), b.dataset.act); busy = false; render();
-});
-$("replyForm").addEventListener("submit", async e => {
-  e.preventDefault(); const t = $("text").value; if (!t.trim() || busy) return;
-  busy = true; $("text").value = ""; renderFeed.force = true; await W.reply($("who").value, t); busy = false; render();
-});
-document.querySelector(".chips").addEventListener("click", e => { const c = e.target.closest("[data-say]"); if (!c) return; const [who, text] = c.dataset.say.split("|"); $("who").value = who; $("text").value = text; $("text").focus(); });
-$("traceBody").addEventListener("click", e => { const t = e.target.closest("[data-tab]"); if (t) { traceTab = t.dataset.tab; renderTrace(); } });
-initWho(); render();
-</script>
+/* ---------------- KPIs, marks ---------------- */
+function renderKPIs(){
+  const t=S.t, spent=RUNS.reduce((a,r)=>a+spend(r,t),0);
+  const avoided=RUNS.reduce((a,r)=>{const p=TL.paused[r.id];return a+(p!=null&&t>=p?PRICE*(N-p)/60:0)},0);
+  const ai=TL.ev.filter(e=>e.kind==="ai"&&e.m<=t);
+  const aiCost=ai.reduce((a,e)=>a+e.cost,0);
+  $("#kpis").innerHTML=[[usd(spent),"spent tonight (3 servers × $"+PRICE+"/hr)"],[usd(avoided),"avoided by pauses (until 7:14 AM)"],[ai.length+" · "+usd(aiCost),"AI calls · AI cost"],[Object.values(S.locks).filter(Boolean).length,"runs locked “do not kill”"]]
+    .map(k=>`<div class="kpi"><b>${k[0]}</b><span>${k[1]}</span></div>`).join("");
+}
+function renderMarks(){
+  const ms=[[0,"Launch"],...[...new Set(TL.ev.filter(e=>e.kind==="flag").map(e=>e.m))].map(m=>[m,"⚑"]),...Object.values(TL.paused).map(m=>[m,"✓"]),[N,"Morning"]];
+  $("#marks").innerHTML=ms.map(([m,l])=>`<span style="left:${m/N*100}%" class="${S.t>=m?"hit":""}">${l}</span>`).join("");
+}
+function render(){ $("#time").textContent=hm(S.t); $("#scrub").value=S.t; renderRuns(); renderTrace(); renderKPIs(); renderMarks();
+  $("#morningSec").classList.toggle("hidden",S.t<N); if(S.t>=N) renderMorning(); }
+
+/* ---------------- setup ---------------- */
+function buildSetup(){
+  $("#setupCards").innerHTML=RUNS.map(r=>`<div class="panel"><h3>${r.id}</h3><div class="mono muted">$ ${esc(r.cmd)}</div>
+    <label class="row"><input type="checkbox" data-lock="${r.id}"> “Do not kill” lock (deadline run)</label>
+    <label class="row">Sleep budget cap <input type="number" min="0" step="10" value="${S.caps[r.id]}" data-cap="${r.id}"> USD</label>
+    <span class="muted" style="font-size:12px">Costs ${usd(PRICE)}/hr · ${usd(PRICE*N/60)} if it runs until 7:14 AM</span></div>`).join("");
+  document.querySelectorAll("[data-lock]").forEach(i=>i.onchange=()=>{S.locks[i.dataset.lock]=i.checked;recompute()});
+  document.querySelectorAll("[data-cap]").forEach(i=>i.oninput=()=>{S.caps[i.dataset.cap]=+i.value||0;recompute()});
+}
+function recompute(){TL=timeline();shownEv=-1;S.morning={};render()}
+
+/* ---------------- clock ---------------- */
+let timer=null;
+function play(on){S.playing=on;$("#play").textContent=on?"❚❚ Pause":"▶ Play";$("#play").setAttribute("aria-label",on?"Pause":"Play");
+  clearInterval(timer); if(!on) return;
+  timer=setInterval(()=>{ if(S.t>=N){play(false);return}
+    const nt=S.t+1; const stop=$("#stopAt").checked&&TL.ev.some(e=>e.m===nt&&(e.kind==="act"||e.kind==="ai"||e.blocked));
+    S.t=nt; render(); if(stop) play(false); },60);}
+$("#play").onclick=()=>{if(S.t>=N)S.t=0;play(!S.playing)};
+$("#scrub").oninput=e=>{play(false);S.t=+e.target.value;render()};
+$("#next").onclick=()=>{play(false);const n=TL.ev.find(e=>e.m>S.t);S.t=n?n.m:N;render()};
+$("#sleep").onclick=()=>{S.started=true;$("#clock").scrollIntoView({behavior:"smooth"});play(true)};
+
+/* ---------------- morning ---------------- */
+function renderMorning(){
+  const msgs=[];
+  for(const r of RUNS){
+    const o=TL.outcome[r.id], ch=S.morning[r.id];
+    if(!o) continue;
+    if(o.type==="kept"){
+      msgs.push(`<div class="msg">${r.id} looked stalled at ${hm(o.m)}: no loss lines for ${RU.silent_min} min, GPU under 30%.<br>It was a full validation pass (${r.eval.batches} batches, val ${r.eval.val_loss.toFixed(3)}). Kept running.<br><span style="color:#8fb3a3">A fixed-threshold script would have killed it at ${hm(r.naive_kill)}.</span></div>`);continue;}
+    const saved=PRICE*(N-o.m)/60, ck=o.v.chosen;
+    let head="";
+    if(o.type==="locked") head=`<b>Did NOT pause ${r.id}: “do not kill” lock</b><br>${o.ans?esc(o.ans.verdict)+" since "+hm(r.flag.onset):"Budget cap reached"} · kept billing: ${usd(PRICE*(N-o.flagM)/60)} after the flag`;
+    else if(o.rule==="budget") head=`Paused ${r.id} (budget cap ${usd(S.caps[r.id])} reached)<br>Checkpoint: ${ck.file} verified<br>Avoided spend: ~${usd(saved)}`;
+    else if(r.story==="collapse") head=`Paused ${r.id} (loss at chance level ${o.flagM-r.flag.onset+2}m)<br>Checkpoint: ${ck.file} verified<br><span style="color:#8fb3a3">${o.v.rows.length-1} newer checkpoints failed the health check</span><br>Avoided spend: ~${usd(saved)}`;
+    else head=`Paused ${r.id} (finished ${hm(r.finished_at)}, GPUs idle)<br>Final checkpoint: ${ck.file} verified (val ${ck.val_loss})<br>Avoided spend: ~${usd(saved)}`;
+    const diff=o.type==="paused"&&o.ans&&o.ans.fix?`<br><br><span class="del">- ${esc(r.cmd)}</span><br><span class="add">+ ${esc(r.cmd.replace(r.fix.from,r.fix.to))}</span>`:"";
+    const btn=o.type==="locked"?"":(ch?`<div class="res">${esc(resultText(r,o,ch))}</div>`:`<div class="btns">${r.story==="collapse"&&o.rule!=="budget"?`<button class="go" data-m="${r.id}:approve">Approve</button>`:`<button class="go" data-m="${r.id}:approve">OK, leave it off</button>`}<button data-m="${r.id}:whitelist">Whitelist</button><button data-m="${r.id}:undo">Undo</button></div>`);
+    msgs.push(`<div class="msg">${head}${diff}${btn}</div>`);
+  }
+  $("#phone").innerHTML=`<div class="hdr">COSTGUARD · 7:14 AM</div>`+msgs.join("");
+  document.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{const [id,a]=b.dataset.m.split(":");S.morning[id]=a;renderMorning();renderAfter(id,a)});
+  const totalNo=RUNS.reduce((a,r)=>a+PRICE*N/60,0), totalWith=RUNS.reduce((a,r)=>a+spend(r,N),0);
+  $("#vs").innerHTML=`<div class="panel"><h3 style="color:var(--crit)">Without CostGuard</h3><p class="mono" style="font-size:1.2rem;margin:4px 0">${usd(totalNo)}</p><p class="muted">All three servers bill until you wake up. You find a dead model and no idea which checkpoint is safe.</p></div>
+  <div class="panel with"><h3 style="color:var(--good)">With CostGuard</h3><p class="mono" style="font-size:1.2rem;margin:4px 0">${usd(totalWith)}</p><p class="muted">${usd(totalNo-totalWith)} avoided, a verified checkpoint and a tested 1-line fix. Nothing restarted without you.</p></div>`;
+}
+function resultText(r,o,a){
+  if(a==="approve") return r.story==="collapse"&&o.rule!=="budget"?"Approved. Relaunching from "+o.v.chosen.file+" with the new flag.":"OK. Instance stays stopped. Snapshot kept 7 days.";
+  if(a==="whitelist") return "Whitelisted. This pattern won't trigger a pause on "+r.id+" again. Restarted as it was.";
+  return "Undone. "+r.id+" restarted exactly as it was at "+hm(o.m)+". Billing resumed.";
+}
+function renderAfter(id,a){
+  const r=byId[id],o=TL.outcome[id],el=$("#after");
+  if(a==="approve"&&r.story==="collapse"&&o.rule!=="budget"){
+    const orig=r.val, fx=r.fix.val, best=Math.min(...orig.map(p=>p[1]));
+    el.innerHTML=`<h3>Approved: ${esc(r.cmd.replace(r.fix.from,r.fix.to))}</h3>
+    <p class="muted" style="margin:4px 0 8px">We actually ran this command. It resumed from step 6000 with a peak learning rate of 3e-3:</p>
+    <table><thead><tr><th>step</th><th>original run val loss</th><th>resumed run val loss</th></tr></thead><tbody>${fx.filter(p=>p[0]%10000===0).map(p=>{const oo=(DATA.runs[0].val.find(q=>Math.round(q[0]*r.steps_per_min/1000)*1000===p[0])||[])[1];return `<tr><td class="num">${p[0].toLocaleString()}</td><td class="num">${oo??"—"}</td><td class="num ok">${p[1]}</td></tr>`}).join("")}</tbody></table>
+    <p style="margin-top:6px">Best before: <b>${best}</b>. After the fix it reaches <b>${Math.min(...fx.map(p=>p[1]))}</b> and stays below 1.9 to step 60,000, instead of collapsing to ${CH}.</p>`;
+  } else if(a==="whitelist"){
+    el.innerHTML=`<h3>Whitelisted on ${id}</h3><p>Added exception: <span class="mono">${id}: ignore “${o.rule==="budget"?"budget cap":r.flag.rule}”</span>. The run was restarted as it was. You can remove the exception in settings. CostGuard learns from it: the same pattern on this run now only notifies.</p>`;
+  } else if(a==="undo"){
+    el.innerHTML=`<h3>Undone: ${id} restarted</h3><p>The instance was started again from its snapshot, exactly as it was at ${hm(o.m)}. Billing resumes at ${usd(PRICE)}/hr. Every pause, check and undo is in the audit log above.</p>`;
+  } else el.innerHTML=`<h3>${id} stays stopped</h3><p>Snapshot kept 7 days. ${usd(PRICE*(N-o.m)/60)} avoided overnight.</p>`;
+}
+
+/* ---------------- what's real ---------------- */
+function buildReal(){
+  const A=byId["a100-train-2"],B=byId["a100-train-1"],C=byId["a100-train-3"];
+  const rows=[
+   ["Training loss, val loss, grad norm, lr","<b>Real.</b> Three runs of a character-level language model (numpy MLP, Adam, fp16-style matmuls) on Tiny Shakespeare that we trained. a100-train-2's peak learning rate (0.1) was too high: its validation loss rose from "+Math.min(...A.val.map(p=>p[1]))+" and the model collapsed to the chance level ("+CH+")."],
+   ["Checkpoints and their health","<b>Real.</b> Every checkpoint file was loaded and re-evaluated: NaN check, share of dead ReLU units, validation loss. From step 34,000 on, 100% of units are dead."],
+   ["The 1-line fix","<b>Real.</b> We ran <span class='mono'>--lr 3e-3 --resume step_6000</span>: validation loss "+Math.min(...A.fix.val.map(p=>p[1]))+"–"+Math.max(...A.fix.val.map(p=>p[1]))+"."],
+   ["Slow eval on a100-train-1","<b>Real.</b> A full validation pass ("+B.eval.batches+" batches, loss "+B.eval.val_loss.toFixed(3)+") on the real step-"+B.eval.step.toLocaleString()+" checkpoint. Its length matches a real GPU dip in Philly."],
+   ["GPU utilization","<b>Real.</b> Per-minute nvidia-smi from three 8-GPU jobs in Microsoft's Philly cluster (2017), replayed from each job's launch minute: …"+A.philly.jobid.slice(-5)+" ("+A.philly.status+", "+A.philly.hours+" h at ~92%), …"+B.philly.jobid.slice(-5)+" ("+B.philly.status+"), …"+C.philly.jobid.slice(-5)+" ("+C.philly.status+": 7 h at 0% until 7:36 AM)."],
+   ["Clock mapping","<b>Chosen.</b> The runs are small and ran on a CPU, so their steps are spread evenly over the night ("+A.steps_per_min+", "+B.steps_per_min+" and "+C.steps_per_min+" steps per minute). For a100-train-2 the rate was set so the collapse lands at 1:36 AM, as in the journey map."],
+   ["Price","<b>Public list price.</b> $"+PRICE+"/hr: "+DATA.night.price_note],
+   ["AI answers","<b>Written in advance</b> (no API key in a public page), from the same numbers. Prompts and token costs are real-sized."],
+   ["Cloud API, phone message, IAM role","<b>Simulated.</b>"]];
+  $("#realRows").innerHTML=rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join("");
+  const P=DATA.philly_stats, o=P.overnight, sh=P.gpu_hours_share;
+  $("#philly").innerHTML=`<ul style="margin:0;padding-left:18px">
+   <li><b>${Math.round(sh.Failed*100)}%</b> of all GPU-hours went to jobs that ended <b>Failed</b> and <b>${Math.round(sh.Killed*100)}%</b> to jobs that were <b>Killed</b>. Only ${Math.round(sh.Pass*100)}% went to jobs that passed. (Failed jobs may still have done useful work before failing.)</li>
+   <li>Of ${o.robust_jobs} overnight 8-GPU jobs (launched 8 PM–midnight, 5–30 h), <b>${o.robust_idle_hour_jobs} (${Math.round(o.robust_idle_hour_jobs/o.robust_jobs*100)}%)</b> held all 8 GPUs at under 5% for an hour or more, and <b>${Math.round(o.robust_idle_minute_share*100)}%</b> of their GPU-minutes were under 5%. (Excludes ${o.jobs-o.robust_jobs} jobs that read 0% almost all night, which may be monitoring gaps; with them: ${o.idle_hour_jobs}/${o.jobs} and ${Math.round(o.idle_minute_share*100)}%.)</li></ul>
+   <p class="muted" style="font-size:12px;margin-top:6px">Source: Jeon et al., “Analysis of Large-Scale Multi-Tenant GPU Clusters for DNN Training Workloads”, USENIX ATC 2019; trace at github.com/msr-fiddle/philly-traces. Processing scripts in this repo under <span class="mono">src/costguard/pipeline/</span>.</p>`;
+}
+
+buildSetup(); buildRuns(); buildReal(); render();
+</script></body></html>

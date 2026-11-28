@@ -14,8 +14,8 @@ a.card b{font-size:1.15rem;color:var(--accent)} a.card p{margin-top:4px}
 small{color:var(--muted)}
 </style></head><body><main>
 <h1>Agentic AI demos</h1>
-<p>Two interactive prototypes for a university HCI critique. Each runs entirely in your browser with an offline mock AI; all data is synthetic and nothing is sent anywhere.</p>
+<p>Two interactive prototypes for a university HCI critique. Each runs entirely in your browser with an offline mock AI; nothing is sent anywhere.</p>
 <a class="card" href="claim-rescue/"><b>Claim Rescue →</b><p>Turns insurance claim denials into cited appeal drafts that a doctor approves. Deterministic guards catch paraphrased quotes, uncited claims and evidence from the wrong patient.</p></a>
-<a class="card" href="costguard/"><b>CostGuard →</b><p>Finds idle cloud machines, pauses test machines on its own, asks a person before touching production, and blocks a prompt-injection attempt.</p></a>
-<small>Simulated: EHR/insurer systems, cloud provider, Slack and billing data.</small>
+<a class="card" href="costguard/"><b>CostGuard →</b><p>Watches overnight GPU training runs while you sleep: catches a run that stopped learning, verifies a healthy checkpoint, pauses the spend, and sends a 1-line fix for you to approve. Built on real training runs and real GPU traces (Microsoft Philly).</p></a>
+<small>Claim Rescue uses synthetic data. CostGuard uses real loss curves and GPU traces; its cloud API and messages are simulated.</small>
 </main></body></html>
